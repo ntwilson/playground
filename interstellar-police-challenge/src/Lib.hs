@@ -3,7 +3,6 @@ module Lib (optimalSolutions) where
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.List as List
--- import Debug.Trace (trace)
 
 --     o
 --     |
@@ -16,10 +15,11 @@ import qualified Data.List as List
 -- o       o        
 
 -- rebels must move each turn to an adjacent planet
--- police may move anywhere each turn, or stay at the same system
--- rebels are caught if the police are at the same system at the same time
+-- police may move anywhere each turn, or stay at the same planet
+-- rebels are caught if the police are at the same planet at the same time
 -- objective is to find the shortest police route that guarantees the rebels are captured, 
 -- regardless of their movements
+-- police may enter the system at any planet on their first turn
 
 data Planet = Outer1 | Outer2 | Outer3 | Inner1 | Inner2 | Inner3 | Center
   deriving (Eq, Ord, Show)
@@ -91,10 +91,10 @@ setElemExists predicate xs =
 optimalSolutions :: Set PoliceMoves
 optimalSolutions = 
   let 
-    x = List.iterate advanceAndTrim startingMoveSets
-    y = List.find (setElemExists (\moveSet -> numRebelPossibilies moveSet == 0)) x
+    infiniteTurns = List.iterate advanceAndTrim startingMoveSets
+    winningTurn = List.find (setElemExists (\moveSet -> numRebelPossibilies moveSet == 0)) x
   in 
-    case y of
-      Just moves -> Set.map (\(policeMoves, _rebelPositions) -> policeMoves) moves
-      Nothing -> undefined
+    case winningTurn of
+      Just movesThatWinThisTurn -> Set.map (\(policeMoves, _rebelPositions) -> policeMoves) movesThatWinThisTurn
+      Nothing -> error "reached the end of an infinite list???"
 
