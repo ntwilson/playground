@@ -10,7 +10,7 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.List (List)
 import Data.List as List
-import Data.List.Infinite as IList
+import Data.List.Lazy as LList
 import Data.Maybe (Maybe(..))
 --     o
 --     |
@@ -108,10 +108,12 @@ setElemExists predicate xs =
 optimalSolutions :: Set PoliceMoves
 optimalSolutions = 
   let 
-    infiniteTurns = IList.iterate advanceAndTrim startingMoveSets
-    winningTurn = IList.head $ IList.filter (setElemExists (\moveSet -> numRebelPossibilies moveSet == 0)) infiniteTurns
+    infiniteTurns = LList.iterate advanceAndTrim startingMoveSets
+    winningTurn = LList.head $ LList.filter (setElemExists (\moveSet -> numRebelPossibilies moveSet == 0)) infiniteTurns
   in 
-    Set.map (\{ police } -> police) winningTurn
+    case winningTurn of
+      Just optimalMoves -> Set.map (\{ police } -> police) optimalMoves
+      Nothing -> unsafeThrow "reached the end of an infinite list???"
 
 optimalLength :: Int
 optimalLength = 
@@ -121,7 +123,7 @@ optimalLength =
 
 main :: Effect Unit
 main = do
-  (logShow optimalSolutions :: Effect Unit)
+  logShow optimalSolutions
   log ""
   log ("The optimal solution requires " <> (show optimalLength) <> " moves")
   log ((show $ Set.size optimalSolutions) <> " optimal solutions found")

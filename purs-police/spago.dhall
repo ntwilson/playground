@@ -12,7 +12,7 @@ You can edit this file as you like.
         "ordered-collections", 
         "foldable-traversable",
         "exceptions", 
-        "infinite-lists"
+        "lists"
     ]
 , packages =
     ./packages.dhall
