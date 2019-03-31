@@ -3,6 +3,7 @@ module Main where
 import Prelude
 import Effect (Effect)
 import Effect.Console (log, logShow)
+import Effect.Exception.Unsafe (unsafeThrow)
 
 import Data.Foldable (foldl)
 import Data.Set (Set)
@@ -11,7 +12,6 @@ import Data.List (List)
 import Data.List as List
 import Data.List.Infinite as IList
 import Data.Maybe (Maybe(..))
-
 --     o
 --     |
 --     o
@@ -117,7 +117,7 @@ optimalLength :: Int
 optimalLength = 
   case Set.findMin optimalSolutions of
     Just aSolution -> List.length aSolution
-    Nothing -> bottom
+    Nothing -> unsafeThrow "no solutions found"
 
 main :: Effect Unit
 main = do

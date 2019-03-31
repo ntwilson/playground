@@ -10,7 +10,8 @@ You can edit this file as you like.
         "console", 
         "prelude", 
         "ordered-collections", 
-        "foldable-traversable", 
+        "foldable-traversable",
+        "exceptions", 
         "infinite-lists"
     ]
 , packages =
