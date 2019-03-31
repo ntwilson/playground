@@ -4,7 +4,7 @@ import Prelude
 
 import Data.Foldable (foldl)
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (class GenericShow, genericShow)
+import Data.Generic.Rep.Show (genericShow)
 import Data.List (List)
 import Data.List as List
 import Data.List.Lazy as LList
@@ -54,13 +54,9 @@ possibleRebelMoves Center = Set.fromFoldable [Inner1, Inner2, Inner3]
 allLocations :: Set Planet
 allLocations = Set.fromFoldable [ Outer1, Outer2, Outer3, Inner1, Inner2, Inner3, Center ] 
 
-setConcat :: forall a. Ord a => Set (Set a) -> Set a
-setConcat sets = 
-  foldl Set.union Set.empty sets
-
 setBind :: forall a b. Ord a => Ord b => (a -> Set b) -> Set a -> Set b
 setBind f x = 
-  setConcat $ Set.map f x
+  Set.unions $ Set.map f x
 
 infixr 5 setBind as ==<<
 
@@ -119,7 +115,8 @@ optimalLength =
 
 main :: Effect Unit
 main = do
-  logShow optimalSolutions
+  let formattedSolutions = (Set.toUnfoldable $ Set.map List.toUnfoldable optimalSolutions) :: Array (Array Planet) 
+  logShow formattedSolutions
   log ""
   log ("The optimal solution requires " <> (show optimalLength) <> " moves")
   log ((show $ Set.size optimalSolutions) <> " optimal solutions found")
