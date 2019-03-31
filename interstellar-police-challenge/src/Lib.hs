@@ -92,7 +92,7 @@ optimalSolutions :: Set PoliceMoves
 optimalSolutions = 
   let 
     infiniteTurns = List.iterate advanceAndTrim startingMoveSets
-    winningTurn = List.find (setElemExists (\moveSet -> numRebelPossibilies moveSet == 0)) x
+    winningTurn = List.find (setElemExists (\moveSet -> numRebelPossibilies moveSet == 0)) infiniteTurns
   in 
     case winningTurn of
       Just movesThatWinThisTurn -> Set.map (\(policeMoves, _rebelPositions) -> policeMoves) movesThatWinThisTurn
