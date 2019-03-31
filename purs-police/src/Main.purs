@@ -1,17 +1,19 @@
 module Main where
 
 import Prelude
-import Effect (Effect)
-import Effect.Console (log, logShow)
-import Effect.Exception.Unsafe (unsafeThrow)
 
 import Data.Foldable (foldl)
-import Data.Set (Set)
-import Data.Set as Set
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (class GenericShow, genericShow)
 import Data.List (List)
 import Data.List as List
 import Data.List.Lazy as LList
 import Data.Maybe (Maybe(..))
+import Data.Set (Set)
+import Data.Set as Set
+import Effect (Effect)
+import Effect.Console (log, logShow)
+import Effect.Exception.Unsafe (unsafeThrow)
 --     o
 --     |
 --     o
@@ -32,14 +34,8 @@ import Data.Maybe (Maybe(..))
 data Planet = Outer1 | Outer2 | Outer3 | Inner1 | Inner2 | Inner3 | Center
 derive instance eqPlanet :: Eq Planet
 derive instance ordPlanet :: Ord Planet
-instance showPlanet :: Show Planet where
-  show Outer1 = "Outer1"
-  show Outer2 = "Outer2"
-  show Outer3 = "Outer3"
-  show Inner1 = "Inner1"
-  show Inner2 = "Inner2"
-  show Inner3 = "Inner3"
-  show Center = "Center"
+derive instance genericPlanet :: Generic Planet _
+instance showPlanet :: Show Planet where show = genericShow
 
 type PoliceMoves = List Planet
 type RebelPossibleLocations = Set Planet
