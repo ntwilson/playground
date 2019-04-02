@@ -3,6 +3,7 @@ module Lib (optimalSolutions) where
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.List as List
+import qualified Data.Text as Text
 
 --     o
 --     |
@@ -43,7 +44,7 @@ allLocations = Set.fromList [ Outer1, Outer2, Outer3, Inner1, Inner2, Inner3, Ce
 
 setConcat :: Ord a => Set (Set a) -> Set a
 setConcat sets = 
-  foldl Set.union Set.empty sets
+  foldl' Set.union Set.empty sets
 
 setBind :: (Ord a, Ord b) => (a -> Set b) -> Set a -> Set b
 setBind f x = 
@@ -96,5 +97,5 @@ optimalSolutions =
   in 
     case winningTurn of
       Just movesThatWinThisTurn -> Set.map (\(policeMoves, _rebelPositions) -> policeMoves) movesThatWinThisTurn
-      Nothing -> error "reached the end of an infinite list???"
+      Nothing -> error $ Text.pack "reached the end of an infinite list???"
 
