@@ -13,6 +13,7 @@ You can edit this file as you like.
     , "lists"
     , "ordered-collections"
     , "prelude"
+    , "psci-support"
     ]
 , packages =
     ./packages.dhall
