@@ -3,33 +3,32 @@ module Main where
 import Lib
 import Data.Text.Read
 import Text.Printf (printf)
+import qualified Either
+import qualified Maybe
 
+text :: String -> Text
+text = toText
 
-caseStringToInputs :: Text -> Maybe (Int, Int, Int, Int)
+caseStringToInputs :: Text -> Either Text (Int, Int, Int, Int)
 caseStringToInputs str = 
   let
     inputs = words str
     parsedInputs = sequence (readEither <$> inputs)
   in 
     case parsedInputs of 
-      Right [a, b, c, d] -> Just (a, b, c, d)
-      _ -> Nothing
+      Right [a, b, c, d] -> Right (a, b, c, d)
+      Left _ -> Left $ text (printf "case string: '%s' must be a set of four, space separated integers" (toString str))
 
 main :: IO ()
 main = do
-  nCases <- (readEither <$> getLine)
-  case nCases of
-    Right n -> do
-      cases <- sequence (const getLine <$> [1 .. n])
-      let inputs = sequence (caseStringToInputs <$> cases)
-      case inputs of 
-        Just validInputs -> do
-          putTextLn $ toText ""
-          forM_ validInputs $ \(distance, velocity, departureHr, departureMin) ->
-            let (arrivalHr, arrivalMin) = totalFlightTime distance velocity departureHr departureMin
-            in printf "%i:%02i\n" arrivalHr arrivalMin
+  n <- (readEither <$> getLine)
+  nCases <- n # Either.unless (text "each run must begin with a line with a single integer for the number of cases")
 
-        Nothing -> putTextLn $ toText "bad input"
+  cases <- sequence (const getLine <$> [1 .. nCases])
+  inputs <- sequence (caseStringToInputs <$> cases) # Either.expect
 
-    Left _ -> putTextLn $ toText "bad input"
+  putTextLn $ toText ""
+  forM_ inputs $ \(distance, velocity, departureHr, departureMin) ->
+    let (arrivalHr, arrivalMin) = totalFlightTime distance velocity departureHr departureMin
+    in printf "%i:%02i\n" arrivalHr arrivalMin
   

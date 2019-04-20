@@ -1,8 +1,7 @@
 module Main where
 
 import Lib
-import qualified Either as Either 
-import Operators ((#), (<#>))
+import qualified Either
 import Data.List.Split (splitOn)
 import Text.Printf (printf)
 
