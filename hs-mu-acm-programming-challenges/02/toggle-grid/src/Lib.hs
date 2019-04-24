@@ -1,5 +1,5 @@
 module Lib (execute, ToggleCode(..), LightGrid) where
-
+ 
 import Data.List.Index
 
 type LightGrid = [[Bool]]
