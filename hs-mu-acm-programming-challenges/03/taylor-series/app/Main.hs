@@ -9,14 +9,25 @@ text = toText
 
 main :: IO ()
 main = do
-  n <- (readEither <$> getLine)
-  nCases <- n # Either.unless (text "each run must begin with a line with a single integer for the number of cases")
-  cases <- sequence (const loadCase <$> [1 .. nCases])
+
+  putTextLn $ text "Please enter an integer for the number of angles to run for, then each angle (in degrees) on a new line"
+
+  cases <- loadAllCases
   let angles = cases <#> Lib.degToRad
   let answers = angles <#> \d -> (Lib.sin d, Lib.cos d)
   writeSolution answers 
 
   where 
+    loadAllCases :: IO [Float]
+    loadAllCases = do 
+      nCases <- loadNCases
+      sequence (const loadCase <$> [1 .. nCases])
+      
+    loadNCases :: IO Float 
+    loadNCases = do 
+      n <- (readEither <$> getLine)
+      n # Either.unless (text "each run must begin with a line with a single integer for the number of cases")
+      
     loadCase :: IO Float
     loadCase = do
       input <- readEither <$> getLine
