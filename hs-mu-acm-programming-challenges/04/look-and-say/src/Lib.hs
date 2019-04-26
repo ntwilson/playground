@@ -36,12 +36,6 @@ splitPairwise splitBetween (head' : tail') =
   in 
     split tail' head' (singleton head') []
 
-unsafeToInt :: Char -> Int 
-unsafeToInt char = 
-  case readEither [char] of 
-    Right x -> x
-    Left _ -> error (toText $ "'" ++ [char] ++ "' is not a number")
-
 lookAndSay :: String -> String
 lookAndSay inputStr = 
   let
@@ -55,9 +49,9 @@ lookAndSay inputStr =
 lookAndSay3x :: String -> String
 lookAndSay3x i = lookAndSay $ lookAndSay $ lookAndSay i 
   
-lookAndSayAndSum :: String -> String
+lookAndSayAndSum :: String -> Either Text Text
 lookAndSayAndSum i = 
   let
-    digits = unsafeToInt <$> lookAndSay3x i
+    digits = sequence (lookAndSay3x i <#> \char -> readEither [char])
   in 
-    show $ sum (digits :: [Int])
+    show <$> (sum <$> digits)

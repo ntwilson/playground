@@ -17,5 +17,8 @@ main = do
   cases <- sequence ([1 .. nCases] <#> const getLine)
 
   putTextLn (text "")
-  forM_ cases $ putTextLn . toText . lookAndSayAndSum . toString
+  forM_ cases $ \input ->
+    case lookAndSayAndSum $ toString input of
+      Right x -> putTextLn x
+      Left _ -> fail "inputs must be integers.  Every character of the input must be numeric"
 
