@@ -1,9 +1,12 @@
 module Either (Either.unless, expect) where
 
-unless :: Text -> Either l a -> IO a
-unless _ (Right x) = pure x
-unless txt (Left _) = fail $ toString txt
+import Control.Exception (throw)
+import Exceptions (BadAssumption (..), ReportableException)
 
-expect :: Either Text r -> IO r
-expect (Right x) = pure x
-expect (Left msg) = fail $ toString msg 
+unless :: Text -> Either l a -> a
+unless _ (Right x) = x
+unless txt (Left _) = throw $ BadAssumption txt
+
+expect :: ReportableException e => Either e r -> r
+expect (Right x) = x
+expect (Left e) = throw e 

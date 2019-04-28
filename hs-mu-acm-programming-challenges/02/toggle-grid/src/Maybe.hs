@@ -1,5 +1,8 @@
 module Maybe (Maybe.unless) where
 
-unless :: Text -> Maybe a -> IO a
-unless _ (Just x) = pure x
-unless txt Nothing = fail $ toString txt
+import Control.Exception (throw)
+import Exceptions (BadAssumption (..))
+
+unless :: Text -> Maybe a -> a
+unless _ (Just x) = x
+unless txt Nothing = throw $ BadAssumption txt
