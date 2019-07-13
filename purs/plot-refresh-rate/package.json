@@ -1,0 +1,29 @@
+{
+  "name": "random",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "plotly.js": "^1.48.3",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-plotly.js": "^2.3.0"
+  },
+  "devDependencies": {
+    "webpack": "^4.35.3",
+    "webpack-cli": "^3.3.5",
+    "webpack-dev-server": "^3.7.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "spago build && webpack",
+    "build-prod": "spago build && webpack --config webpack.config.prod.js",
+    "start": "webpack-dev-server --config webpack.config.js",
+    "start-prod": "webpack-dev-server --config webpack.config.prod.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
