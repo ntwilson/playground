@@ -12,6 +12,7 @@ You can edit this file as you like.
     , "web-html"
     , "react-dom"
     , "random"
+    , "spec"
     ]
 , packages =
     ./packages.dhall
