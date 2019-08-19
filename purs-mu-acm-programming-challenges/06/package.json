@@ -1,0 +1,14 @@
+{
+  "name": "06",
+  "version": "1.0.0",
+  "description": "",
+  "main": "runner.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node runner.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
