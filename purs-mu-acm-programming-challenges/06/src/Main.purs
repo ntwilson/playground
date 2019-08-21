@@ -2,6 +2,7 @@ module Main where
 
 import Prelude
 
+
 import Data.Array ((..))
 import Data.Char (fromCharCode, toCharCode)
 import Data.Int as Int
@@ -11,8 +12,10 @@ import Data.Maybe (Maybe(..))
 import Data.Maybe.FromJustUnless (fromJustUnless, unsafeFromJustUnless)
 import Data.String.CodeUnits (singleton)
 import Effect (Effect)
+
 import Effect.Console (logShow)
-import Node.ReadLine (close, createConsoleInterface, noCompletion, question, setPrompt)
+import Effect.Promise (class Deferred, Promise, promise, runPromise)
+import Node.ReadLine (Interface, close, createConsoleInterface, noCompletion, question, setPrompt)
 import Partial.Unsafe (unsafePartial)
 
 baseConverter :: Int -> Int -> String 
@@ -54,19 +57,32 @@ multBaseConverter testNum lBound uBound = do
   base <- lBound .. uBound
   pure $ baseConverter testNum base
 
+ask :: Deferred => String -> Interface -> Promise String
+ask prompt iface = 
+  promise \resolve err -> question prompt resolve iface
+
+fromJust :: forall a. Partial => Maybe a -> a
+fromJust = fromJustUnless "Unrecognized input.  Expecting a number."
+
+getInput :: Partial => Deferred => Interface -> Promise { lBound :: Int, testNum :: Int, uBound :: Int }
+getInput iface = do
+  testNumStr <- ask "please enter a number to convert: " iface
+  let testNum = fromJust $ Int.fromString testNumStr
+  lBoundStr <- ask "please enter a lower-bound base:  " iface
+  let lBound = fromJust $ Int.fromString lBoundStr
+  uBoundStr <- ask "please enter an upper-bound base: " iface
+  let uBound = fromJust $ Int.fromString uBoundStr
+  pure { testNum, lBound, uBound }
+
 main :: Effect Unit
 main = unsafePartial do
   iface <- createConsoleInterface noCompletion
-  let 
-    qstn prompt resolve = question prompt resolve iface
-    fromJust = fromJustUnless "Unrecognized input.  Expecting a number."
   setPrompt "> " 2 iface
-  qstn "please enter a number to convert: " (\testNumStr -> do 
-    let testNum = fromJust $ Int.fromString testNumStr
-    qstn "please enter a lower-bound base:  " (\lBoundStr -> do
-      let lBound = fromJust $ Int.fromString lBoundStr
-      qstn "please enter an upper-bound base: " (\uBoundStr -> do
-        let uBound = fromJust $ Int.fromString uBoundStr
-        logShow $ multBaseConverter testNum lBound uBound
-        close iface
-  )))
+  
+  runPromise 
+    (\{ testNum, lBound, uBound } -> do
+      logShow $ multBaseConverter testNum lBound uBound
+      close iface)
+    (\_ -> close iface)
+    (getInput iface)
+

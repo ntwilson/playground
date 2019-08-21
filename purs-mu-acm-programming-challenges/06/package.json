@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "start": "node runner.js"
+    "start": "spago build && node runner.js"
   },
   "author": "",
   "license": "ISC"
