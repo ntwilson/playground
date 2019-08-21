@@ -6,18 +6,20 @@ module Main
 import Prelude
 
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Int (ceil)
 import Data.Int as Int
-import Data.List (List(..), (:))
+import Data.List (List(..), (:), (..))
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (fromCharArray, toCharArray)
-import Data.Traversable (for_)
+import Data.Traversable (for, for_)
 import Effect (Effect)
-import Effect.Console (log, logShow)
-import Effect.Promise (class Deferred, Promise, promise, runPromise)
+import Effect.Aff (Aff, launchAff_, makeAff)
+import Effect.Class (liftEffect)
+import Effect.Console (log)
 import Math (sqrt)
-import Node.ReadLine (close, createConsoleInterface, noCompletion, question)
+import Node.ReadLine (Interface, close, createConsoleInterface, noCompletion, question)
 import Partial (crashWith)
 import Partial.Unsafe (unsafePartial)
 
@@ -45,46 +47,40 @@ encrypt s =
     isWhitespace _    = false
 
 
-ask :: Deferred => String -> Promise String
-ask prompt = 
-  promise \resolve err -> do
-    iface <- createConsoleInterface noCompletion
+ask :: Interface -> String -> Aff String
+ask iface prompt = 
+  makeAff \callback -> do
+    -- iface <- createConsoleInterface noCompletion
     let 
-      resolveAndClose x = do
-        resolve x
-        close iface
+      resolveAndClose userResponse = do
+        callback (Right userResponse)
+        -- close iface
 
     question prompt resolveAndClose iface
+    mempty
+
 
 fromJustUnless :: forall a. Partial => String -> Maybe a -> a
 fromJustUnless msg (Just x) = x
 fromJustUnless msg Nothing = crashWith msg
 
-getInput :: Partial => Deferred => Promise (List String)
+getInput :: Partial => Aff (List String)
 getInput = do
-  testNumStr <- ask "how many phrases would you like to encrypt? "
+  iface <- liftEffect $ createConsoleInterface noCompletion 
+  let ask' = ask iface
+  testNumStr <- ask' "how many phrases would you like to encrypt? "
   let testNum = fromJustUnless "Unrecognized input.  Expecting a number." $ Int.fromString testNumStr
 
-  -- I'd much rather just write
-  -- for (1 .. testNum) \i -> ask ("test case #" <> show i <> " ")
-  -- but it tries to run all promises concurrently, and I need to sequence them
-  let 
-    iterate cases i 
-      | i == testNum = do
-        thisCase <- ask ("test case #" <> show i <> " ")
-        pure $ List.snoc cases thisCase
-      | otherwise = do
-        thisCase <- ask ("test case #" <> show i <> " ") 
-        let newCases = List.snoc cases thisCase
-        iterate newCases (i + 1)
+  ans <- for (1 .. testNum) \i -> ask' ("test case #" <> show i <> " ")
+  liftEffect $ close iface
+  pure ans 
 
-  iterate Nil 1
+run :: Partial => Aff Unit 
+run = do
+  testCases <- getInput
+  liftEffect (log "")
+  liftEffect $ for_ testCases $ log <<< encrypt
 
 main :: Effect Unit
 main = unsafePartial $
-  runPromise
-    (\testCases -> do
-      log ""
-      for_ testCases $ log <<< encrypt)
-    (\err -> logShow err)
-    getInput
+  launchAff_ run
