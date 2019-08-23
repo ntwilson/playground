@@ -11,6 +11,7 @@ import Prelude
 
 import Data.Array ((..))
 import Data.Char (fromCharCode, toCharCode)
+import Data.Either (Either(..))
 import Data.Int as Int
 import Data.List.Lazy ((:))
 import Data.List.Lazy as List
@@ -18,9 +19,10 @@ import Data.Maybe (Maybe(..))
 import Data.Maybe.FromJustUnless (fromJustUnless, unsafeFromJustUnless)
 import Data.String.CodeUnits (singleton)
 import Effect (Effect)
-import Effect.Console (log, logShow)
-import Effect.Promise (class Deferred, Promise, promise, runPromise)
-import Node.ReadLine (Interface, close, createConsoleInterface, noCompletion, question, setPrompt)
+import Effect.Aff (Aff, launchAff_, makeAff)
+import Effect.Class (liftEffect)
+import Effect.Console (logShow)
+import Node.ReadLine (Interface, close, createConsoleInterface, noCompletion, question)
 import Partial.Unsafe (unsafePartial)
 
 newtype Base = Base Int
@@ -109,42 +111,39 @@ multBaseConverter testNum lBound uBound = do
   base <- range lBound uBound
   pure $ baseConverter testNum base
 
-ask :: Deferred => String -> Promise String
-ask prompt = 
-  promise \resolve err -> do
-    iface <- createConsoleInterface noCompletion
-    let 
-      resolveAndClose x = do
-        resolve x
-        close iface
+ask :: Interface -> String -> Aff String
+ask iface prompt = 
+  makeAff \resolve -> do
+    let resolveAndClose x = resolve (Right x)
 
     question prompt resolveAndClose iface
+    mempty
 
 
-getInput :: Partial => Deferred => Promise { testNum :: Int, lBound :: Base, uBound :: Base }
+getInput :: Partial => Aff { testNum :: Int, lBound :: Base, uBound :: Base }
 getInput = do
-  testNumStr <- ask "please enter a number to convert: "
+  iface <- liftEffect $ createConsoleInterface noCompletion 
+  let ask' = ask iface 
+
+  testNumStr <- ask' "please enter a number to convert: "
   let testNum = fromJustUnless "Unrecognized input.  Expecting a number." $ Int.fromString testNumStr
 
-  lBoundStr <- ask "please enter a lower-bound base:  " 
+  lBoundStr <- ask' "please enter a lower-bound base:  " 
   let 
     lBound = 
       fromJustUnless "Unrecognized input. Expecting a number between 2 and 62" $ 
         Int.fromString lBoundStr >>= baseFromInt
 
-  uBoundStr <- ask "please enter an upper-bound base: "
+  uBoundStr <- ask' "please enter an upper-bound base: "
   let 
     uBound = 
       fromJustUnless "Unrecognized input. Expecting a number between 2 and 62" $ 
         Int.fromString uBoundStr >>= baseFromInt
 
+  liftEffect $ close iface 
   pure { testNum, lBound, uBound }
 
 main :: Effect Unit
-main = unsafePartial $
-  runPromise 
-    (\{ testNum, lBound, uBound } -> do
-      logShow $ multBaseConverter testNum lBound uBound)
-    (\err -> logShow err)
-    getInput
-
+main = unsafePartial $ launchAff_ do
+  { testNum, lBound, uBound } <- getInput
+  liftEffect $ logShow $ multBaseConverter testNum lBound uBound
