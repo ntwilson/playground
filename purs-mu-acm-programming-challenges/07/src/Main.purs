@@ -50,11 +50,9 @@ encrypt s =
 ask :: Interface -> String -> Aff String
 ask iface prompt = 
   makeAff \callback -> do
-    -- iface <- createConsoleInterface noCompletion
     let 
       resolveAndClose userResponse = do
         callback (Right userResponse)
-        -- close iface
 
     question prompt resolveAndClose iface
     mempty

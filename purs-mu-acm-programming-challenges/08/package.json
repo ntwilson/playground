@@ -1,0 +1,14 @@
+{
+  "name": "08",
+  "version": "1.0.0",
+  "description": "",
+  "main": "runner.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "spago build && node runner.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

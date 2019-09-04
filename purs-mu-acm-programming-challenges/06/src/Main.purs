@@ -113,10 +113,10 @@ multBaseConverter testNum lBound uBound = do
 
 ask :: Interface -> String -> Aff String
 ask iface prompt = 
-  makeAff \resolve -> do
-    let resolveAndClose x = resolve (Right x)
+  makeAff \resolveWithEither -> do
+    let resolve x = resolveWithEither (Right x)
 
-    question prompt resolveAndClose iface
+    question prompt resolve iface
     mempty
 
 
