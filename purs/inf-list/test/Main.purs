@@ -20,7 +20,7 @@ infListSpecs = unsafePartial do
     describe "creation" do
       it "doesn't hang" do
         (InfList.iterate (_ + 1) 0 { maxElements: 10000000 } # InfList.take 5)
-          `shouldEqual` (0:1:2:3:4:nil)
+          `shouldEqual` (0:1:2:3:4: nil)
 
     let testList = InfList.iterate (_ + 1) 0 { maxElements: 1000000 }
 
@@ -36,6 +36,25 @@ infListSpecs = unsafePartial do
     describe "show" do
       it "doesn't hang" do
         show testList `shouldEqual` "InfList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ...]"
+
+    describe "working with lists of maybes" do
+      let 
+        even i 
+          | i `mod` 2 == 0 = Just i
+          | otherwise = Nothing
+
+      describe "mapMaybe" do
+        it "doesn't hang" do
+          (testList # InfList.mapMaybe even # InfList.take 3) `shouldEqual` (0:2:4:nil)
+
+      describe "catMaybes" do 
+        it "doesn't hang" do
+          (testList <#> even # InfList.catMaybes # InfList.take 3) `shouldEqual` (0:2:4:nil)
+
+    describe "chunkBySize" do
+      it "doesn't hang" do
+        (testList # InfList.chunkBySize 2 # InfList.take 3) 
+          `shouldEqual` ((0:1:nil) : (2:3:nil) : (4:5:nil) : nil)
 
 main :: Effect Unit
 main = launchAff_ $ runSpec [consoleReporter] do
