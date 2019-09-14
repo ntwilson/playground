@@ -2,6 +2,7 @@ module Test.Main where
 
 import Prelude
 
+import Data.Either (Either(..), isLeft, isRight)
 import Data.Identity (Identity)
 import Data.List.Infinite as InfList
 import Data.List.Lazy ((:), nil)
@@ -10,32 +11,43 @@ import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Partial.Unsafe (unsafePartial)
 import Test.Spec (SpecT, describe, it)
-import Test.Spec.Assertions (shouldEqual)
+import Test.Spec.Assertions (shouldEqual, shouldSatisfy)
 import Test.Spec.Reporter (consoleReporter)
 import Test.Spec.Runner (runSpec)
 
 infListSpecs :: SpecT Aff Unit Identity Unit
 infListSpecs = unsafePartial do
   describe "InfList" do
-    describe "creation" do
-      it "doesn't hang" do
-        (InfList.iterate (_ + 1) 0 { maxElements: 10000000 } # InfList.take 5)
-          `shouldEqual` (0:1:2:3:4: nil)
-
-    let testList = InfList.iterate (_ + 1) 0 { maxElements: 1000000 }
-
-    describe "find" do
-      it "doesn't hang" do
-        (testList # InfList.find (_ == 10))
-          `shouldEqual` (Just 10)
-
-    describe "index" do
-      it "doesn't hang" do
-        (testList # InfList.index 100) `shouldEqual` Just 100
+    let 
+      wellFormedList = InfList.iterate (_ + 1) 0 { maxElements: 10000 }
+      illFormedList = InfList.iterate (const 0) 0 { maxElements: 1000 } # InfList.filter (_ /= 0)
 
     describe "show" do
       it "doesn't hang" do
-        show testList `shouldEqual` "InfList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ...]"
+        show wellFormedList `shouldEqual` "InfList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ...]"
+        show illFormedList `shouldEqual` "InfList <application hung while showing the list>"
+      
+    describe "take" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.take 5)
+          `shouldEqual` Right (0:1:2:3:4: nil)
+
+        (illFormedList # InfList.take 5) 
+          `shouldSatisfy` isLeft
+
+    describe "find" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.find (_ == 10))
+          `shouldEqual` (Right 10)
+
+        (illFormedList # InfList.find (_ == 10))
+          `shouldSatisfy` isLeft 
+
+
+    describe "index" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.index 100) `shouldEqual` Right 100
+        (illFormedList # InfList.index 100) `shouldSatisfy` isLeft
 
     describe "working with lists of maybes" do
       let 
@@ -45,16 +57,70 @@ infListSpecs = unsafePartial do
 
       describe "mapMaybe" do
         it "doesn't hang" do
-          (testList # InfList.mapMaybe even # InfList.take 3) `shouldEqual` (0:2:4:nil)
+          (wellFormedList # InfList.mapMaybe even # InfList.take 3) `shouldEqual` Right (0:2:4:nil)
+          (illFormedList # InfList.mapMaybe even # InfList.take 3) `shouldSatisfy` isLeft
 
       describe "catMaybes" do 
         it "doesn't hang" do
-          (testList <#> even # InfList.catMaybes # InfList.take 3) `shouldEqual` (0:2:4:nil)
+          (wellFormedList <#> even # InfList.catMaybes # InfList.take 3) `shouldEqual` Right (0:2:4:nil)
+          (illFormedList <#> even # InfList.catMaybes # InfList.take 3) `shouldSatisfy` isLeft
 
     describe "chunkBySize" do
       it "doesn't hang" do
-        (testList # InfList.chunkBySize 2 # InfList.take 3) 
-          `shouldEqual` ((0:1:nil) : (2:3:nil) : (4:5:nil) : nil)
+        (wellFormedList # InfList.chunkBySize 2 # InfList.take 3) 
+          `shouldEqual` Right ((0:1:nil) : (2:3:nil) : (4:5:nil) : nil)
+
+        (illFormedList # InfList.chunkBySize 2 # InfList.take 3)
+          `shouldSatisfy` isLeft
+
+        let listWith5 = InfList.iterate (_ + 1) (-4) {maxElements: 1000} # InfList.filter (_ <= 0)
+        (listWith5 # InfList.chunkBySize 2 # InfList.take 2) 
+          `shouldEqual` Right (((-4):(-3):nil) : ((-2):(-1):nil) : nil)
+
+        (listWith5 # InfList.chunkBySize 2 # InfList.take 3) `shouldSatisfy` isLeft 
+
+    describe "drop" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.drop 5 # InfList.take 5)
+          `shouldEqual` (Right (5:6:7:8:9:nil))
+
+        (illFormedList # InfList.drop 5 # InfList.take 5) 
+          `shouldSatisfy` isLeft
+
+    describe "dropWhile" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.dropWhile (_ < 10) # InfList.take 5)
+          `shouldEqual` (Right (10:11:12:13:14:nil))
+
+        (illFormedList # InfList.dropWhile (_ < 10) # InfList.take 5)
+          `shouldSatisfy` isLeft
+
+        (wellFormedList # InfList.dropWhile (const true) # InfList.take 1)
+          `shouldSatisfy` isLeft
+
+    describe "head" do
+      it "doesn't hang" do
+        (InfList.head wellFormedList) `shouldEqual` Right 0
+        (InfList.head illFormedList) `shouldSatisfy` isLeft
+
+    describe "uncons" do
+      it "doesn't hang" do
+        (InfList.uncons wellFormedList) `shouldSatisfy` 
+          (case _ of
+            Right { head, tail } -> head == 0 && InfList.take 3 tail == Right (1:2:3:nil)
+            Left _ -> false)
+
+        (InfList.uncons illFormedList) `shouldSatisfy` isLeft
+
+        (InfList.uncons $ InfList.filter (_ == 0) wellFormedList) `shouldSatisfy` isRight
+
+    describe "mapWithIndex" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.mapWithIndex (\i x -> i + x) # InfList.take 5) 
+          `shouldEqual` (Right (0:2:4:6:8:nil))
+
+        (illFormedList # InfList.mapWithIndex (\i x -> i + x) # InfList.take 5)
+          `shouldSatisfy` isLeft
 
 main :: Effect Unit
 main = launchAff_ $ runSpec [consoleReporter] do
