@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Either (Either(..), isLeft, isRight)
 import Data.Identity (Identity)
+import Data.List.Infinite (InfList)
 import Data.List.Infinite as InfList
 import Data.List.Lazy ((:), nil)
 import Data.Maybe (Maybe(..))
@@ -15,13 +16,14 @@ import Test.Spec.Assertions (shouldEqual, shouldSatisfy)
 import Test.Spec.Reporter (consoleReporter)
 import Test.Spec.Runner (runSpec)
 
+wellFormedList :: InfList Int
+wellFormedList = InfList.iterate (_ + 1) 0 { maxElements: 10000 }
+illFormedList :: InfList Int
+illFormedList = InfList.iterate (const 0) 0 { maxElements: 1000 } # InfList.filter (_ /= 0)
+
 infListSpecs :: SpecT Aff Unit Identity Unit
 infListSpecs = unsafePartial do
   describe "InfList" do
-    let 
-      wellFormedList = InfList.iterate (_ + 1) 0 { maxElements: 10000 }
-      illFormedList = InfList.iterate (const 0) 0 { maxElements: 1000 } # InfList.filter (_ /= 0)
-
     describe "show" do
       it "doesn't hang" do
         show wellFormedList `shouldEqual` "InfList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ...]"
