@@ -1,8 +1,9 @@
 module Data.List.Infinite 
   ( InfList
-  , ApplicationHung
+  , ApplicationHung(..)
   , iterate
   , take
+  , takeLazy
   , find
   , index
   , mapMaybe
@@ -13,15 +14,18 @@ module Data.List.Infinite
   , dropWhile
   , head
   , uncons
-  , mapWithIndex) where
+  , mapWithIndex
+  , zipWith
+  , zipWithL, zipWithR) where
 
 import Prelude
 
-import Data.Either (Either(..), hush, isRight, note)
+import Data.Array as Array
+import Data.Either (Either(..), note)
 import Data.Lazy (defer)
 import Data.List.Lazy (List(..), Step(..), intercalate)
 import Data.List.Lazy as List
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Data.Newtype (class Newtype)
 
 newtype InfList a = InfList (List a)
@@ -61,6 +65,19 @@ take n (InfList xs) =
   let result = List.take n xs
   in if List.length result == n then Right result else Left hung
 
+-- | Lazily returns up to the first N elements of the sequence.  
+-- | Note that reaching the end of the infinite sequence represents
+-- | the application hanging, and we cannot preemptively detect a hang while executing lazily.
+-- | As such the possibility of a hang is deferred to each individual element.
+-- | This only returns elements up to the first Error, so there is no guarantee that
+-- | the resulting sequence would contain N elements.  
+-- | If you are able to eagerly evaluate the first n elements, consider using 
+-- | `take` instead, which is likely easier to consume.
+takeLazy :: forall a. Int -> InfList a -> List (Either ApplicationHung a)
+takeLazy n (InfList xs) =
+  lazySnoc (Right <$> xs) (Left hung)
+  # List.take n
+  
 takeWhile :: forall a. (a -> Boolean) -> InfList a -> Either ApplicationHung (List a)
 takeWhile predicate infxs@(InfList xs) = 
   find (not <<< predicate) infxs
@@ -108,9 +125,9 @@ listChunkBySize size xs =
 chunkBySize :: forall a. Int -> InfList a -> InfList (List a)
 chunkBySize size (InfList xs) = 
   listChunkBySize size xs
-  <#> (\chunk -> if List.length chunk == size then Right chunk else Left hung)
-  # List.takeWhile isRight
-  # List.mapMaybe hush
+  <#> (\chunk -> if List.length chunk == size then Just chunk else Nothing)
+  # List.takeWhile isJust
+  # List.catMaybes
   # InfList
 
 filter :: forall a. (a -> Boolean) -> InfList a -> InfList a 
@@ -138,7 +155,23 @@ mapWithIndex projection (InfList xs) =
       List $ defer \_ -> case List.step xs' of
         Cons h tail -> Cons (projection idx h) (go tail (idx+1))
         Nil -> Nil
-  
+
+zipWith :: forall a b c. (a -> b -> c) -> InfList a -> InfList b -> InfList c
+zipWith fn (InfList xs) (InfList ys) = InfList $ List.zipWith fn xs ys
+
+zipWithL :: forall a b c. (a -> b -> c) -> InfList a -> Array b -> Either ApplicationHung (Array c)
+zipWithL fn (InfList xs) ys = 
+  let 
+    xsArr = List.take (Array.length ys) xs # Array.fromFoldable
+    result = Array.zipWith fn xsArr ys
+  in
+    if Array.length ys == Array.length result 
+    then Right $ Array.fromFoldable result
+    else Left hung
+
+zipWithR :: forall a b c. (a -> b -> c) -> Array b -> InfList a -> Either ApplicationHung (Array c)
+zipWithR fn = flip (zipWithL fn)
+
 -- tests stop here -- 
 
 pairwise :: forall a. InfList a -> InfList { left :: a, right :: a }

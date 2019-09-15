@@ -2,9 +2,10 @@ module Test.Main where
 
 import Prelude
 
+import Data.Array as Array
 import Data.Either (Either(..), isLeft, isRight)
 import Data.Identity (Identity)
-import Data.List.Infinite (InfList)
+import Data.List.Infinite (ApplicationHung(..), InfList)
 import Data.List.Infinite as InfList
 import Data.List.Lazy ((:), nil)
 import Data.Maybe (Maybe(..))
@@ -18,8 +19,12 @@ import Test.Spec.Runner (runSpec)
 
 wellFormedList :: InfList Int
 wellFormedList = InfList.iterate (_ + 1) 0 { maxElements: 10000 }
+
 illFormedList :: InfList Int
 illFormedList = InfList.iterate (const 0) 0 { maxElements: 1000 } # InfList.filter (_ /= 0)
+
+hung :: ApplicationHung
+hung = ApplicationHung "Program execution hung. This infinite sequence was allowed to evaluate elements for too long."
 
 infListSpecs :: SpecT Aff Unit Identity Unit
 infListSpecs = unsafePartial do
@@ -36,6 +41,14 @@ infListSpecs = unsafePartial do
 
         (illFormedList # InfList.take 5) 
           `shouldSatisfy` isLeft
+
+    describe "takeLazy" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.takeLazy 5)
+          `shouldEqual` (Right 0 : Right 1 : Right 2 : Right 3 : Right 4 : nil)
+
+        (illFormedList # InfList.takeLazy 5)
+          `shouldEqual` (Left hung : nil)
 
     describe "find" do
       it "doesn't hang" do
@@ -122,6 +135,31 @@ infListSpecs = unsafePartial do
           `shouldEqual` (Right (0:2:4:6:8:nil))
 
         (illFormedList # InfList.mapWithIndex (\i x -> i + x) # InfList.take 5)
+          `shouldSatisfy` isLeft
+
+    describe "zipWith" do
+      it "doesn't hang" do
+        (InfList.zipWith (+) wellFormedList wellFormedList # InfList.take 5)
+          `shouldEqual` Right (0:2:4:6:8:nil)
+
+        (InfList.zipWith (+) wellFormedList illFormedList # InfList.take 5)
+          `shouldSatisfy` isLeft
+
+        (InfList.zipWith (+) illFormedList wellFormedList # InfList.take 5)
+          `shouldSatisfy` isLeft
+
+    describe "zipWith finite + infinite" do
+      it "doesn't hang" do
+        (InfList.zipWithL (+) wellFormedList [1,2,3])
+          `shouldEqual` Right [1,3,5]
+
+        (InfList.zipWithL (+) illFormedList [1,2,3])
+          `shouldSatisfy` isLeft
+
+        (InfList.zipWithR (+) [1,2,3] wellFormedList) 
+          `shouldEqual` Right [1,3,5]
+
+        (InfList.zipWithR (+) [1,2,3] illFormedList)
           `shouldSatisfy` isLeft
 
 main :: Effect Unit
