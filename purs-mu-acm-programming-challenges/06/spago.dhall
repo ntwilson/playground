@@ -12,6 +12,8 @@ You can edit this file as you like.
     , "debug"
     , "spec"
     , "promises"
+    , "quickcheck"
+    , "spec-quickcheck"
     ]
 , packages =
     ./packages.dhall

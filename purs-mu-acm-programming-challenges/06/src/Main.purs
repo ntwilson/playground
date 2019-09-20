@@ -3,6 +3,7 @@ module Main
   , baseFromInt
   , Digit
   , digitFromInt
+  , renderDigit
   , baseConverter
   , multBaseConverter
   , main) where
@@ -66,22 +67,21 @@ renderer (Digit i)
   | otherwise = Lower $ LetterIndex $ i - 10 - 26
 
 renderDigit :: Digit -> String
-renderDigit d =
-  case renderer d of
-    Direct i -> show i
-    Upper (LetterIndex i) -> 
-      let 
-        valOfA = toCharCode 'A'
-        charVal = valOfA + i
-        char = fromCharCode charVal # unsafeFromJustUnless ("can't add letter index " <> show i <> " to character 'A'")
-      in singleton char
+renderDigit d = case renderer d of
+  Direct i -> show i
+  Upper (LetterIndex i) -> 
+    let 
+      valOfA = toCharCode 'A'
+      charVal = valOfA + i
+      char = fromCharCode charVal # unsafeFromJustUnless ("can't add letter index " <> show i <> " to character 'A'")
+    in singleton char
 
-    Lower (LetterIndex i) ->
-      let 
-        valOfA = toCharCode 'a'
-        charVal = valOfA + i
-        char = fromCharCode charVal # unsafeFromJustUnless ("can't add letter index " <> show i <> " to character 'a'") 
-      in singleton char
+  Lower (LetterIndex i) ->
+    let 
+      valOfA = toCharCode 'a'
+      charVal = valOfA + i
+      char = fromCharCode charVal # unsafeFromJustUnless ("can't add letter index " <> show i <> " to character 'a'") 
+    in singleton char
 
 baseConverter :: Int -> Base -> String 
 baseConverter testNum (Base base) = 
@@ -98,6 +98,7 @@ baseConverter testNum (Base base) =
             thisDigit = 
               digitFromInt thisDigitValue 
               # unsafeFromJustUnless ("Bad logic computing base convertion for base " <> show base 
+                <> " with number " <> show testNum
                 <> ". Remainder " <> show remainder <> " while considering digit " <> show thisDigitRoot 
                 <> " resulted in a value that cannot be rendered as a digit: " <> show thisDigitValue)
           in 

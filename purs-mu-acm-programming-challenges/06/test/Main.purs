@@ -3,13 +3,18 @@ module Test.Main where
 import Prelude
 
 import Data.Identity (Identity)
-import Data.Maybe.FromJustUnless (fromJustUnless)
+import Data.Maybe (Maybe(..))
+import Data.Maybe.FromJustUnless (fromJustUnless, unsafeFromJustUnless)
+import Data.String.CodeUnits (length)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
-import Main (Base, baseConverter, baseFromInt, multBaseConverter)
+import Main (Base, Digit, baseConverter, baseFromInt, digitFromInt, multBaseConverter, renderDigit)
 import Partial.Unsafe (unsafePartial)
+import Test.QuickCheck (class Arbitrary, arbitrary, (===))
+import Test.QuickCheck.Gen (chooseInt, suchThat)
 import Test.Spec (SpecT, describe, it)
 import Test.Spec.Assertions (shouldEqual)
+import Test.Spec.QuickCheck (quickCheck)
 import Test.Spec.Reporter.Console (consoleReporter)
 import Test.Spec.Runner (runSpec)
 
@@ -48,7 +53,48 @@ baseConversionSpecs = unsafePartial do
       multBaseConverter 10 (mkBase 2) (mkBase 4) `shouldEqual` ["1010", "101", "22"]
       multBaseConverter 100 (mkBase 15) (mkBase 20) `shouldEqual` ["6A", "64", "5F", "5A", "55", "50"]
 
+newtype ArbDigit = ArbDigit Digit
+
+instance digitArb :: Arbitrary ArbDigit where
+  arbitrary = do
+    d <-
+      suchThat 
+        (map digitFromInt (chooseInt 0 64))
+        (case _ of 
+          Nothing -> false 
+          Just _ -> true)
+      
+    pure $ ArbDigit $ unsafeFromJustUnless "" d
+
+newtype ArbBase = ArbBase Base
+
+instance baseArb :: Arbitrary ArbBase where
+  arbitrary = do
+    b <-
+      suchThat 
+        (map baseFromInt (chooseInt 0 64))
+        (case _ of 
+          Nothing -> false 
+          Just _ -> true)
+      
+    pure $ ArbBase $ unsafeFromJustUnless "" b
+
+newtype NaturalInt = NaturalInt Int
+instance arbNaturalInt :: Arbitrary NaturalInt where
+  arbitrary = map (\i -> NaturalInt (if i < 0 then negate i else i)) arbitrary
+
+baseConversionProperties :: SpecT Aff Unit Identity Unit
+baseConversionProperties = do
+  describe "renderDigit" do
+    it "does not crash for any inputs" do
+      quickCheck \(ArbDigit d) -> (renderDigit d # length) === 1
+
+  describe "baseConverter" do
+    it "does not crash for any inputs" do 
+      quickCheck \(NaturalInt testNum) (ArbBase base) -> (baseConverter testNum base # length) > 0
+
 
 main :: Effect Unit
 main = launchAff_ $ runSpec [consoleReporter] do
   baseConversionSpecs
+  baseConversionProperties
