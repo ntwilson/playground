@@ -1,5 +1,7 @@
 module Main 
   ( Base
+  , NaturalInt 
+  , naturalIntFromInt
   , baseFromInt
   , Digit
   , digitFromInt
@@ -83,8 +85,14 @@ renderDigit d = case renderer d of
       char = fromCharCode charVal # unsafeFromJustUnless ("can't add letter index " <> show i <> " to character 'a'") 
     in singleton char
 
-baseConverter :: Int -> Base -> String 
-baseConverter testNum (Base base) = 
+newtype NaturalInt = NaturalInt Int
+naturalIntFromInt :: Int -> NaturalInt
+naturalIntFromInt i 
+  | i < 0 = NaturalInt 0
+  | otherwise = NaturalInt i
+
+baseConverter :: NaturalInt -> Base -> String 
+baseConverter (NaturalInt testNum) (Base base) = 
   let
     baseDigits = List.iterate (_ * base) base
     relevantDigits = 1 : (baseDigits # List.takeWhile (_ <= testNum)) # List.reverse
@@ -110,7 +118,8 @@ baseConverter testNum (Base base) =
 multBaseConverter :: Int -> Base -> Base -> Array String 
 multBaseConverter testNum lBound uBound = do
   base <- range lBound uBound
-  pure $ baseConverter testNum base
+  let n = naturalIntFromInt testNum
+  pure $ baseConverter n base
 
 ask :: Interface -> String -> Aff String
 ask iface prompt = 

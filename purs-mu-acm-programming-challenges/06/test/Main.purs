@@ -8,7 +8,7 @@ import Data.Maybe.FromJustUnless (fromJustUnless, unsafeFromJustUnless)
 import Data.String.CodeUnits (length)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
-import Main (Base, Digit, baseConverter, baseFromInt, digitFromInt, multBaseConverter, renderDigit)
+import Main (Base, Digit, NaturalInt, baseConverter, baseFromInt, digitFromInt, multBaseConverter, naturalIntFromInt, renderDigit)
 import Partial.Unsafe (unsafePartial)
 import Test.QuickCheck (class Arbitrary, arbitrary, (===))
 import Test.QuickCheck.Gen (chooseInt, suchThat)
@@ -26,14 +26,14 @@ baseConversionSpecs = unsafePartial do
   describe "number base conversions" do
     describe "with a single target base" do
       it "converts a decimal number to the supplied base" do
-        baseConverter 5 (mkBase 2) `shouldEqual` "101"
-        baseConverter 11 (mkBase 2) `shouldEqual` "1011"
-        baseConverter 5 (mkBase 3) `shouldEqual` "12"
-        baseConverter 7 (mkBase 3) `shouldEqual` "21"
+        baseConverter (naturalIntFromInt 5) (mkBase 2) `shouldEqual` "101"
+        baseConverter (naturalIntFromInt 11) (mkBase 2) `shouldEqual` "1011"
+        baseConverter (naturalIntFromInt 5) (mkBase 3) `shouldEqual` "12"
+        baseConverter (naturalIntFromInt 7) (mkBase 3) `shouldEqual` "21"
 
       it "handles converting 0" do
-        baseConverter 0 (mkBase 2) `shouldEqual` "0"
-        baseConverter 0 (mkBase 5) `shouldEqual` "0"
+        baseConverter (naturalIntFromInt 0) (mkBase 2) `shouldEqual` "0"
+        baseConverter (naturalIntFromInt 0) (mkBase 5) `shouldEqual` "0"
     
     describe "with multiple target bases" do
       it "converts to all bases between an upper and lower bound" do
@@ -42,11 +42,11 @@ baseConversionSpecs = unsafePartial do
 
     describe "with bases that use all available character sets" do
       it "gets the boundaries correct" do
-        baseConverter 9 (mkBase 40) `shouldEqual` "9"
-        baseConverter 10 (mkBase 40) `shouldEqual` "A"
-        baseConverter 35 (mkBase 40) `shouldEqual` "Z"
-        baseConverter 36 (mkBase 40) `shouldEqual` "a"
-        baseConverter 61 (mkBase 62) `shouldEqual` "z"
+        baseConverter (naturalIntFromInt 9) (mkBase 40) `shouldEqual` "9"
+        baseConverter (naturalIntFromInt 10) (mkBase 40) `shouldEqual` "A"
+        baseConverter (naturalIntFromInt 35) (mkBase 40) `shouldEqual` "Z"
+        baseConverter (naturalIntFromInt 36) (mkBase 40) `shouldEqual` "a"
+        baseConverter (naturalIntFromInt 61) (mkBase 62) `shouldEqual` "z"
 
   describe "acceptance criteria" do
     it "gives the correct answer for the problems provided in the writeup" do
@@ -79,9 +79,9 @@ instance baseArb :: Arbitrary ArbBase where
       
     pure $ ArbBase $ unsafeFromJustUnless "" b
 
-newtype NaturalInt = NaturalInt Int
-instance arbNaturalInt :: Arbitrary NaturalInt where
-  arbitrary = map (\i -> NaturalInt (if i < 0 then negate i else i)) arbitrary
+newtype ArbNaturalInt = ArbNaturalInt NaturalInt
+instance arbNaturalInt :: Arbitrary ArbNaturalInt where
+  arbitrary = map (\i -> ArbNaturalInt (naturalIntFromInt i)) arbitrary
 
 baseConversionProperties :: SpecT Aff Unit Identity Unit
 baseConversionProperties = do
@@ -91,7 +91,7 @@ baseConversionProperties = do
 
   describe "baseConverter" do
     it "does not crash for any inputs" do 
-      quickCheck \(NaturalInt testNum) (ArbBase base) -> (baseConverter testNum base # length) > 0
+      quickCheck \(ArbNaturalInt testNum) (ArbBase base) -> (baseConverter testNum base # length) > 0
 
 
 main :: Effect Unit
