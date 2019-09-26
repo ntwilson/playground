@@ -68,7 +68,7 @@ type AllFields = (a :: Int, b :: Int)
 
 -- an empty type class.  Kind of like an empty interface from other languages that you would expect to apply to 
 -- classes in order to make some assertion about that class.  In this case, the empty type class will be applied
--- to types that match our required & optional field requirements.
+-- to types that match our required & optional field requirements.  This type class is "generic" on 3 variable types
 class Method0Rec (given :: #Type) (rest :: #Type) (optionalGiven :: #Type) 
 
 -- an instance of the Method0Rec type class for _any_ variable type `given` provided that it will satisfy our 
@@ -78,17 +78,19 @@ class Method0Rec (given :: #Type) (rest :: #Type) (optionalGiven :: #Type)
 -- We supply 2 constraints here, both using the Union type class.  Union means that the fields in the first
 -- two types must strictly add together to equal the third type.  Unlike a mathematical union, this includes 
 -- duplicates, so {a, b} {b, c} does _not_ union to {a, b, c} because b is duplicated.  Union has a special
--- property that if you know any 2 of the types, you can solve for the third.
+-- property that if you know any 2 of the types, you can solve for the third.  
 instance method0Rec :: 
   ( Union given rest AllFields -- given must be a subset of AllFields (given + rest = AllFields)
   , Union Required optionalGiven given -- given must be a superset of Required (Required + any optional given = given)
     -- in the first constraint, we expect to know what is `given`, and we obviously know AllFields, so we solve for `rest`
     -- in the second constraint, we obviously know Required, and we know what is `given`, so we solve for `optionalGiven`
+    -- if we can solve for `rest` and `optionalGiven` and both Union constraints still hold true, then this type class
+    -- instance applies to the types you give it.  If no solution exists, then the instance does not apply.
   ) => Method0Rec given rest optionalGiven
 
--- frgn is "generic" on 3 type arguments, which all get infered.  frgn has a constraint that there must exist an
--- instance of the Method0Rec type class for the type arguments given (and to prove that,
--- we need to solve the other two type arguments).
+-- frgn is "generic" on 3 type variables, which all get infered.  frgn has a constraint that there must exist an
+-- instance of the Method0Rec type class for all the type variables (and to prove that the instance exists for
+-- `given`, the compiler needs to solve the other two type variables).
 -- finally, the signature of the function is simply `(Record given) -> Int`
 foreign import frgn :: 
   forall given rest optionalGiven. 
@@ -102,11 +104,11 @@ y :: Int
 y = frgn { a: 5, b: 3 }
 
 
--- should not compile because `b` is required but not given
+-- does not compile because `b` is required but not given
 -- z :: Int
 -- z = frgn { a: 3 }
 
--- should not compile because `z` is given but not required or optional
+-- does not compile because `z` is given but not required or optional
 -- z :: Int
 -- z = frgn { b: 3, z: 5 }
 
@@ -126,7 +128,7 @@ type Optional = (a :: Int)
 
 -- an empty type class.  Kind of like an empty interface from other languages that you would expect to apply to 
 -- classes in order to make some assertion about that class.  In this case, the empty type class will be applied
--- to types that match our required & optional field requirements.
+-- to types that match our required & optional field requirements.  This type class is "generic" on 4 variable types
 class Method1Rec (allFields :: #Type) (given :: #Type) (rest :: #Type) (optionalGiven :: #Type) 
 
 -- an instance of the Method1Rec type class for _any_ variable type `given` provided that it will satisfy our 
@@ -140,16 +142,18 @@ class Method1Rec (allFields :: #Type) (given :: #Type) (rest :: #Type) (optional
 -- property that if you know any 2 of the types, you can solve for the third.
 instance method1Rec :: 
   ( Union Required Optional allFields -- allFields must be the union of required fields and optional fields
-  , Union given rest allFields -- given must be a subset of AllFields (given + rest = AllFields)
+  , Union given rest allFields -- given must be a subset of allFields (given + rest = allFields)
   , Union Required optionalGiven given -- given must be a superset of Required (Required + any optional given = given)
     -- in the first constraint, we obviously know what Required and Optional are, so we can solve for `allFields`
     -- in the second constraint, we expect to know what is `given`, and just solved for `allFields` above, so we solve for `rest`
     -- in the third constraint, we obviously know Required, and we know what is `given`, so we solve for `optionalGiven`
+    -- if we can solve for `allFields` and `rest` and `optionalGiven` and all Union constraints still hold true, 
+    -- then this type class instance applies to the types you give it.  If no solution exists, then the instance does not apply.
   ) => Method1Rec allFields given rest optionalGiven
 
--- frgn1 is "generic" on 4 type arguments, which all get infered.  frgn1 has a constraint that there must exist an
--- instance of the Method1Rec type class for the type arguments given (and to prove that, 
--- we need to solve the other 3 type arguments).
+-- frgn1 is "generic" on 4 type variables, which all get infered.  frgn1 has a constraint that there must exist an
+-- instance of the Method1Rec type class for all the type variables (and to prove that the instance exists for
+-- `given`, the compiler needs to solve the other 3 type variables).
 -- finally, the signature of the function is simply `(Record given) -> Int`
 foreign import frgn1 :: 
   forall allFields given rest optionalGiven. 
@@ -162,11 +166,11 @@ x1 = frgn1 { b: 5 }
 y1 :: Int
 y1 = frgn1 { a: 5, b: 3 }
 
--- should not compile because `b` is required but not given
+-- does not compile because `b` is required but not given
 -- z :: Int
 -- z = frgn { a: 3 }
 
--- should not compile because `z` is given but not required or optional
+-- does not compile because `z` is given but not required or optional
 -- z :: Int
 -- z = frgn { b: 3, z: 5 }
 
@@ -184,7 +188,7 @@ y1 = frgn1 { a: 5, b: 3 }
 
 -- an empty type class.  Kind of like an empty interface from other languages that you would expect to apply to 
 -- classes in order to make some assertion about that class.  In this case, the empty type class will be applied
--- to types that match our optional field requirements.
+-- to types that match our optional field requirements.  This type class is "generic" on 2 variable types
 class Method2Rec (given :: #Type) (rest :: #Type)
 
 -- an instance of the Method2Rec type class for _any_ variable type `given` provided that it will satisfy our 
@@ -197,12 +201,14 @@ class Method2Rec (given :: #Type) (rest :: #Type)
 instance method2Rec :: 
   (Union given rest AllFields -- given must be a subset of AllFields (given + rest = AllFields)
     -- in this constraint, we expect to know what is `given`, and we obviously know AllFields, so we solve for `rest`
+    -- if we can solve for `rest` and the Union constraint still holds true, then this type class
+    -- instance applies to the types you give it.  If no solution exists, then the instance does not apply.
   ) => Method2Rec given rest
 
 
--- frgn2 is "generic" on 2 type arguments, which both get infered.  frgn2 has a constraint that there must exist an
--- instance of the Method2Rec type class for the type arguments given (and to prove that, we need to solve 
--- the other type argument).
+-- frgn2 is "generic" on 2 type variables, which both get infered.  frgn2 has a constraint that there must exist an
+-- instance of the Method2Rec type class for all the type variables (and to prove that the instance exists for
+-- `given`, the compiler needs to solve the other type variable).
 -- finally, the signature of the function is simply `(Record given) -> Int`
 foreign import frgn2 :: 
   forall given rest.
@@ -221,7 +227,7 @@ z2 = frgn2 { b: 5 }
 aa2 :: Int
 aa2 = frgn2 { a: 5, b: 3 }
 
--- should not compile because `z` is given but not allowed in AllFields
+-- does not compile because `z` is given but not allowed in AllFields
 -- ab2 :: Int
 -- ab2 = frgn2 { a: 5, z: 2 }
 
@@ -238,7 +244,7 @@ aa2 = frgn2 { a: 5, b: 3 }
 
 -- an empty type class.  Kind of like an empty interface from other languages that you would expect to apply to 
 -- classes in order to make some assertion about that class.  In this case, the empty type class will be applied
--- to types that match our optional field requirements.
+-- to types that match our optional field requirements.  This type class is "generic" on 2 variable types
 class Method3Rec (optionalGiven :: #Type) (rest :: #Type)
 
 -- an instance of the Method3Rec type class for _any_ variable type `optionalGiven` provided that it will satisfy our 
@@ -251,11 +257,13 @@ class Method3Rec (optionalGiven :: #Type) (rest :: #Type)
 instance method3Rec ::
   ( Union optionalGiven rest Optional  -- optionalGiven must be a subset of Optional (optionalGiven + rest = Optional)
     -- in this constraint, we expect to know what is `optionalGiven`, and we obviously know Optional, so we solve for `rest`
+    -- if we can solve for `rest` and the Union constraint still holds true, then this type class
+    -- instance applies to the types you give it.  If no solution exists, then the instance does not apply.
   ) => Method3Rec optionalGiven rest
 
--- frgn3 is "generic" on 2 type arguments, which both get infered.  frgn3 has a constraint that there must exist an
--- instance of the Method3Rec type class for the type arguments given (and to prove that, we need to solve 
--- the other type argument).
+-- frgn3 is "generic" on 2 type variables, which both get infered.  frgn3 has a constraint that there must exist an
+-- instance of the Method3Rec type class for all the type variables (and to prove that the instance exists for
+-- `optionalGiven`, the compiler needs to solve the other type variable).
 -- the actual signature of the function is `{ b :: Int | optionalGiven } -> Int`, which means that the record passed in 
 -- must include (b :: Int) (which is the required field(s)), but then can include other fields which we will call `optionalGiven`.
 -- `optionalGiven` is what gets used to solve our Method3Rec constraints.
@@ -270,11 +278,11 @@ x3 = frgn3 { b: 5 }
 y3 :: Int
 y3 = frgn3 { a: 5, b: 3 }
 
--- should not compile because `b` is required but not given
+-- does not compile because `b` is required but not given
 -- z :: Int
 -- z = frgn3 { a: 3 }
 
--- should not compile because `z` is given but not required or optional
+-- does not compile because `z` is given but not required or optional
 -- z :: Int
 -- z = frgn3 { b: 3, z: 5 }
 
@@ -289,35 +297,41 @@ y3 = frgn3 { a: 5, b: 3 }
 -- Another advantage to this approach is that the optional fields can be consumed by
 -- PureScript code where it isn't known by the compiler if the optional value is present
 -- or not.
+-- Note that in this example, we're using `undefined` as the JS default value for any
+-- optional fields, but you could use this technique to apply any default you want.
 --------------------------------------------------------------------------------------
 
 -- this stuff at the top is for working with JS undefined.  It would only need to be defined
 -- once, not for each type that has optional fields.
--- `Undefined` here is behaving pretty much just like Maybe.  You can have an `Undefined Int`
--- which is something that might be an Int, or might be Undefined.
+
+-- `Undefined` here means pretty much the same thing as Maybe.  You can have an `Undefined Int`
+-- which is something that might be an Int, or might be Undefined.  (Note that most foreign
+-- imports must have a corresponding binding in the .js file for the entity being imported, but
+-- a `foreign import data` is just an assertion that some type exists that you will be using in
+-- subsequent bindings, so there is no type definition in the .js file to be imported)
 foreign import data Undefined :: Type -> Type
 -- `undefined` here is the raw JS value for undefined, but we supply a type variable for it
 -- since it could be standing in for any type.  Much like `Nothing` can be used as a `Maybe Int` 
--- and as a `Maybe String`
+-- or as a `Maybe String`, so `undefined` could be used as an `Undefined Int` or as an `Undefined String`
 foreign import undefined :: forall a. Undefined a
 
 -- our runtime implementation is just the plain value or else undefined.  At runtime, there is
 -- no difference between an `Undefined Int`, and just `Int`, we're just tracking with the compiler
--- that it _could_ be undefined.  Hence the `unsafeCoerce`.
+-- that it _could_ be undefined.  Hence the `unsafeCoerce` of an `a` to an `Undefined a`.
 maybeToUndefined :: forall a. Maybe a -> Undefined a
 maybeToUndefined (Just v) = unsafeCoerce v  
 maybeToUndefined Nothing = undefined
 
--- frgn4Impl would be hidden external to this module, only the wrapper function frgn4 would be 
--- accessible publicly.  frgn4Impl will _always_ be given a record of both `a` and `b`, but `a`
--- might be `undefined`
+-- frgn4Impl would be hidden external to this module, only the wrapper function frgn4 defined below
+-- would be accessible publicly.  frgn4Impl will _always_ be given a record of both `a` and `b`, 
+-- but `a` might be `undefined`
 foreign import frgn4Impl :: { a :: Undefined Int, b :: Int } -> Int
 
-type OptionalFields = { a :: Maybe Int, b :: Int }
+type AllFieldsWithMaybeDefaults = { a :: Maybe Int, b :: Int }
 -- we take in the required fields as the first argument (through which we'll construct a record
 -- that contains both required _and_ optional fields, with the optional fields given default values),
 -- and then we take in a lambda to apply any changes to the optional fields.
-frgn4 :: { b :: Int } -> (OptionalFields -> OptionalFields) -> Int
+frgn4 :: { b :: Int } -> (AllFieldsWithMaybeDefaults -> AllFieldsWithMaybeDefaults) -> Int
 frgn4 { b } copyAndUpdate =
   let 
     {a, b} =
@@ -362,7 +376,7 @@ y5 = frgn5 { a: 5, b: 3 }
 z5 :: Int
 z5 = frgn5 { b: 3, z: 5 }
 
--- should not compile because `b` is required but not given
+-- does not compile because `b` is required but not given
 -- z :: Int
 -- z = frgn5 { a: 3 }
 
