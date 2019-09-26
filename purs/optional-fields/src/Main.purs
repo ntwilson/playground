@@ -253,12 +253,16 @@ aa2 = frgn2 { a: 5, b: 3 }
 -- Define a function whose arguments include required fields, and given a direct constraint
 -- for optional fields.  This supports required + optional fields like methods 0 & 1, but 
 -- is a much simpler approach than those methods for cases where the record type with optional fields 
--- is only needed by a single function, or it is simple to redefine the inputs and constraints on
+-- is only needed by a single function, or it is simple to redefine constraints on
 -- each function using that record.
 --------------------------------------------------------------------------------------
 
 -- references Optional from above, copied here for convenience
 -- type Optional = (a :: Int) 
+
+-- A record that must include (b :: Int) (which is the required field(s)), 
+-- but then can include other fields which we will together call `optionalGiven`
+type AllFields3 optionalGiven = { b :: Int | optionalGiven }
 
 -- frgn3 is "generic" on 2 type variables, which both get infered.  frgn3 has a constraint for the variable types
 -- using the Union type class.  Union means that the fields in the first
@@ -267,9 +271,8 @@ aa2 = frgn2 { a: 5, b: 3 }
 -- property that if you know any 2 of the types, you can solve for the third.
 -- (Determining whether or not `optionalGiven` satisfies our constraint means we need to solve for another variable
 -- type that we don't actually care much about, the remainder of Optional that was not included in `optionalGiven`, called `rest`).  
--- The actual signature of the function is `{ b :: Int | optionalGiven } -> Int`, which means that the record passed in 
--- must include (b :: Int) (which is the required field(s)), but then can include other fields which we will together
--- call `optionalGiven`.  `optionalGiven` is what gets used to solve our Union constraint.
+-- The actual signature of the function is `AllFields3 optionalGiven -> Int`, where AllFields3 defined above determines
+-- what `optionalGiven` means, and `optionalGiven` is then what gets used to solve our Union constraint.
 foreign import frgn3 ::
   forall optionalGiven rest.
   Union optionalGiven rest Optional -- optionalGiven must be a subset of Optional (optionalGiven + rest = Optional)
@@ -278,7 +281,7 @@ foreign import frgn3 ::
     -- If no solution exists, then the type variables used are invalid (and we solved for `rest` so really just 
     -- `optionalGiven` is invalid).
   => 
-  { b :: Int | optionalGiven } -> Int
+  AllFields3 optionalGiven -> Int
 
 x3 :: Int 
 x3 = frgn3 { b: 5 }
