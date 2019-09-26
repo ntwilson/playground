@@ -48,11 +48,12 @@ import Unsafe.Coerce (unsafeCoerce)
 -- Method 2: Does not support required fields.  The complexity goes down significantly, but
 -- is only usable when no fields are required and an empty object is a valid input.
 -- 
--- Method 3: Supports required and optional fields, but defines the required fields
--- and optional constraints as part of the imported function definition.  
+-- Method 3: Supports required and optional fields, but defines the 
+-- optional constraints as part of the imported function definition.  
 -- This is the least complex method of supporting required and optional fields, 
 -- but if more than one function work with the same type of record, 
--- the type definitions and constraints would need to be repeated for each function definition.
+-- the constraints would need to be repeated on each function definition, which arguably could
+-- cause more confusion than a type class constraint.
 -- 
 -- Method 4: A different approach to optional properties, where they are treated as not optional
 -- as far as the purescript compiler is concerned, and we use native (and simple) purescript strategies
@@ -254,7 +255,9 @@ aa2 = frgn2 { a: 5, b: 3 }
 -- for optional fields.  This supports required + optional fields like methods 0 & 1, but 
 -- is a much simpler approach than those methods for cases where the record type with optional fields 
 -- is only needed by a single function, or it is simple to redefine constraints on
--- each function using that record.
+-- each function using that record.  (Although remember: the PureScript compiler can infer
+-- function constraints if you omit a function's signature.  It will produce a warning if your function 
+-- doesn't have a signature, but offer an auto-fix where it adds in the infered signature).
 --------------------------------------------------------------------------------------
 
 -- references Optional from above, copied here for convenience
