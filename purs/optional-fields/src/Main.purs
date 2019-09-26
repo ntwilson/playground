@@ -11,55 +11,72 @@ import Unsafe.Coerce (unsafeCoerce)
 
 -- This codebase documents several approaches for dealing with JS FFI where JS
 -- expects an object with optional properties.  This codebase assumes beginning-level understanding
--- of PureScript or even Haskell-inspired programs and contains comments describe the fundamental
+-- of PureScript or even of Haskell-inspired languages and contains comments that describe the fundamental
 -- workings of the language.  If PureScript is already familiar to the reader, I apologize that
--- many of the comments will just be noise.  Don't forget, the raw JS code is available in Main.js
+-- many of the comments will just be noise.  That said: please do not take this as "normal" use of 
+-- type classes.  The explanations in here will not help you understand how type classes are normally
+-- used.  You should look at the PureScript book (https://leanpub.com/purescript/read#leanpub-auto-type-classes)
+-- for that.
+  
+-- Don't forget, the raw JS code is available in Main.js
 -- in case you want to see what the implementation of these foreign JS functions are.
+-- 
+-- The methods of handling optional properties are listed pretty much in the order in which they were 
+-- written as I played around with it, _not_ in order of complexity.  Especially if you are relatively
+-- unfamiliar with PureScript, I do not recommend reading it top down, as the most complex approaches 
+-- are at the top.  I would perhaps recommend bottom up, or perhaps specifically in order 4,3,2,0,1,5
+-- (which I think is a good ranking based on both increasing complexity and decreasing likely usefulness)
 -- 
 -- Methods 0 - 3 show how to actually encode records with optional properties in the 
 -- Purescript type system.  These approaches are the safest and most convenient to consume
--- but involve some type class constraint sorcery that can be more challenging to understand
+-- but involve some type class & constraint sorcery that can be more challenging to understand
 -- than the other methods.
--- Methods 4 & 5 are much simpler, but have drawbacks.  Method 4 is more difficult to consume
--- and will ultimately set all optional fields to undefined (which in JS is subtly different than
--- if the field isn't there at all).  Method 5 simply abandons any typechecking of the optional
--- properties, and allows the caller to pass in whatever additional properties they desire.
+-- Methods 4 & 5 are much simpler, but have drawbacks.  Method 4 is more boilerplate to write & consume
+-- and will ultimately set all optional fields to undefined, which in JS is subtly different than
+-- if the field isn't there at all (though there is a way to work around this).  
+-- Method 5 simply abandons any typechecking of the optional properties, 
+-- and allows the caller to pass in whatever additional properties they desire.
 -- 
 -- Method 0: Supports required and optional fields, but requires some duplication in that 
 -- you must define the required fields in one type definition, and also all required + optional
 -- fields in another type definition
 -- 
--- Method 1: Supports required and optional fields, only requiring separate type definitions
+-- Method 1: Supports required and optional fields, only requiring type definitions
 -- for just the required fields and another for just the optional fields, but the type class
 -- sorcery is even more complex than method 0
 -- 
 -- Method 2: Does not support required fields.  The complexity goes down significantly, but
 -- is only usable when no fields are required and an empty object is a valid input.
 -- 
--- Method 3: Defines the type with the same technique as method 2, but defines required 
--- fields as part of the function definition.  This is the least complex method of supporting
--- required and optional fields, but if more than one function work with the same type, the 
--- required fields would need to be repeated for each function definition.
+-- Method 3: Supports required and optional fields, but defines the required fields
+-- and optional constraints as part of the imported function definition.  
+-- This is the least complex method of supporting required and optional fields, 
+-- but if more than one function work with the same type of record, 
+-- the type definitions and constraints would need to be repeated for each function definition.
 -- 
 -- Method 4: A different approach to optional properties, where they are treated as not optional
 -- as far as the purescript compiler is concerned, and we use native (and simple) purescript strategies
 -- to set the defaults for each optional property manually to `undefined`. (Note that this would 
--- produce a different behavior if from the JS code, just the presense of the field, even if it is 
--- undefined, is treated differently than if the field wasn't there.  This can be worked around with
+-- produce a different behavior if the JS code treats a missing property on an object differently 
+-- than it would treat an object with a property that equals undefined.  This can be worked around with
 -- additional complexity.  An example of that is here: https://blog.ndk.io/purescript-ffi.html) 
 -- 
 -- Method 5: The simplest approach, but not as safe as the others. Only defines required fields 
--- (if there are any), but allowing the caller to pass in any additional fields they want to.
+-- (if there are any), but allows the caller to pass in any additional fields they want to.
 -- This allows for any optional fields to be passed in, but the typechecker only checks to 
 -- make sure the required fields are present.  It doesn't ensure that any other fields are 
--- recognized
+-- recognized.  This probably isn't suitable for a production PureScript application, but 
+-- is also probably the go-to approach when prototyping something.
+--
+-- I suspect that methods 3, 4 & perhaps 0 are the most broadly useful across many different
+-- scenarios, though each has unique advantages.
 
 
 
 --------------------------------------------------------------------------------------
 -- METHOD 0
 -- Define a type (well, a type class) with Required fields and the entire set of required + optional
--- fields that you could use from many functions.  This is one of the most complicated method of optional 
+-- fields that you could use from many functions.  This is one of the most complicated methods of optional 
 -- fields.
 --------------------------------------------------------------------------------------
 
@@ -73,7 +90,7 @@ class Method0Rec (given :: #Type) (rest :: #Type) (optionalGiven :: #Type)
 
 -- an instance of the Method0Rec type class for _any_ variable type `given` provided that it will satisfy our 
 -- constraints.  (Determining whether or not `given` satisfies our constraints means we need to solve for 2 other
--- types that we don't actually care much about, the remainder of AllFields that were not included in `given`, 
+-- types that we don't actually care much about, the remainder of AllFields that was not included in `given`, 
 -- called `rest`, and whatever optional fields were part of `given` but are not required, called `optionalGiven`).  
 -- We supply 2 constraints here, both using the Union type class.  Union means that the fields in the first
 -- two types must strictly add together to equal the third type.  Unlike a mathematical union, this includes 
@@ -108,9 +125,9 @@ y = frgn { a: 5, b: 3 }
 -- z :: Int
 -- z = frgn { a: 3 }
 
--- does not compile because `z` is given but not required or optional
+-- does not compile because `t` is given but not required or optional
 -- z :: Int
--- z = frgn { b: 3, z: 5 }
+-- z = frgn { b: 3, t: 5 }
 
 --------------------------------------------------------------------------------------
 -- METHOD 1
@@ -141,7 +158,7 @@ class Method1Rec (allFields :: #Type) (given :: #Type) (rest :: #Type) (optional
 -- duplicates, so {a, b} {b, c} does _not_ union to {a, b, c} because b is duplicated.  Union has a special
 -- property that if you know any 2 of the types, you can solve for the third.
 instance method1Rec :: 
-  ( Union Required Optional allFields -- allFields must be the union of required fields and optional fields
+  ( Union Required Optional allFields -- allFields is the union of required fields and optional fields
   , Union given rest allFields -- given must be a subset of allFields (given + rest = allFields)
   , Union Required optionalGiven given -- given must be a superset of Required (Required + any optional given = given)
     -- in the first constraint, we obviously know what Required and Optional are, so we can solve for `allFields`
@@ -170,9 +187,9 @@ y1 = frgn1 { a: 5, b: 3 }
 -- z :: Int
 -- z = frgn { a: 3 }
 
--- does not compile because `z` is given but not required or optional
+-- does not compile because `t` is given but not required or optional
 -- z :: Int
--- z = frgn { b: 3, z: 5 }
+-- z = frgn { b: 3, t: 5 }
 
 
 --------------------------------------------------------------------------------------
@@ -192,8 +209,8 @@ y1 = frgn1 { a: 5, b: 3 }
 class Method2Rec (given :: #Type) (rest :: #Type)
 
 -- an instance of the Method2Rec type class for _any_ variable type `given` provided that it will satisfy our 
--- constraints.  (Determining whether or not `given` satisfies our constraints means we need to solve for one other
--- type that we don't actually care much about, the remainder of AllFields that were not included in `given`, called `rest`).  
+-- constraints.  (Determining whether or not `given` satisfies our constraints means we need to solve for one other variable
+-- type that we don't actually care much about, the remainder of AllFields that was not included in `given`, called `rest`).  
 -- We supply one constraint here using the Union type class.  Union means that the fields in the first
 -- two types must strictly add together to equal the third type.  Unlike a mathematical union, this includes 
 -- duplicates, so {a, b} {b, c} does _not_ union to {a, b, c} because b is duplicated.  Union has a special
@@ -208,7 +225,7 @@ instance method2Rec ::
 
 -- frgn2 is "generic" on 2 type variables, which both get infered.  frgn2 has a constraint that there must exist an
 -- instance of the Method2Rec type class for all the type variables (and to prove that the instance exists for
--- `given`, the compiler needs to solve the other type variable).
+-- `given`, the compiler needs to solve the other variable `rest`).
 -- finally, the signature of the function is simply `(Record given) -> Int`
 foreign import frgn2 :: 
   forall given rest.
@@ -227,49 +244,40 @@ z2 = frgn2 { b: 5 }
 aa2 :: Int
 aa2 = frgn2 { a: 5, b: 3 }
 
--- does not compile because `z` is given but not allowed in AllFields
+-- does not compile because `t` is given but not allowed in AllFields
 -- ab2 :: Int
--- ab2 = frgn2 { a: 5, z: 2 }
+-- ab2 = frgn2 { a: 5, t: 2 }
 
 --------------------------------------------------------------------------------------
 -- METHOD 3
--- Define a type (well, a type class) for optional fields, and a function that includes
--- required fields.  This is a much simpler approach than method 1 for cases where the
--- required fields are only needed by a single function, or it is simple to redefine
--- the required fields for each function with that constraint.
+-- Define a function whose arguments include required fields, and given a direct constraint
+-- for optional fields.  This supports required + optional fields like methods 0 & 1, but 
+-- is a much simpler approach than those methods for cases where the record type with optional fields 
+-- is only needed by a single function, or it is simple to redefine the inputs and constraints on
+-- each function using that record.
 --------------------------------------------------------------------------------------
 
 -- references Optional from above, copied here for convenience
 -- type Optional = (a :: Int) 
 
--- an empty type class.  Kind of like an empty interface from other languages that you would expect to apply to 
--- classes in order to make some assertion about that class.  In this case, the empty type class will be applied
--- to types that match our optional field requirements.  This type class is "generic" on 2 variable types
-class Method3Rec (optionalGiven :: #Type) (rest :: #Type)
-
--- an instance of the Method3Rec type class for _any_ variable type `optionalGiven` provided that it will satisfy our 
--- constraints.  (Determining whether or not `optionalGiven` satisfies our constraints means we need to solve for one other
--- type that we don't actually care much about, the remainder of Optional that were not included in `optionalGiven`, called `rest`).  
--- We supply one constraint here using the Union type class.  Union means that the fields in the first
+-- frgn3 is "generic" on 2 type variables, which both get infered.  frgn3 has a constraint for the variable types
+-- using the Union type class.  Union means that the fields in the first
 -- two types must strictly add together to equal the third type.  Unlike a mathematical union, this includes 
 -- duplicates, so {a, b} {b, c} does _not_ union to {a, b, c} because b is duplicated.  Union has a special
 -- property that if you know any 2 of the types, you can solve for the third.
-instance method3Rec ::
-  ( Union optionalGiven rest Optional  -- optionalGiven must be a subset of Optional (optionalGiven + rest = Optional)
-    -- in this constraint, we expect to know what is `optionalGiven`, and we obviously know Optional, so we solve for `rest`
-    -- if we can solve for `rest` and the Union constraint still holds true, then this type class
-    -- instance applies to the types you give it.  If no solution exists, then the instance does not apply.
-  ) => Method3Rec optionalGiven rest
-
--- frgn3 is "generic" on 2 type variables, which both get infered.  frgn3 has a constraint that there must exist an
--- instance of the Method3Rec type class for all the type variables (and to prove that the instance exists for
--- `optionalGiven`, the compiler needs to solve the other type variable).
--- the actual signature of the function is `{ b :: Int | optionalGiven } -> Int`, which means that the record passed in 
--- must include (b :: Int) (which is the required field(s)), but then can include other fields which we will call `optionalGiven`.
--- `optionalGiven` is what gets used to solve our Method3Rec constraints.
+-- (Determining whether or not `optionalGiven` satisfies our constraint means we need to solve for another variable
+-- type that we don't actually care much about, the remainder of Optional that was not included in `optionalGiven`, called `rest`).  
+-- The actual signature of the function is `{ b :: Int | optionalGiven } -> Int`, which means that the record passed in 
+-- must include (b :: Int) (which is the required field(s)), but then can include other fields which we will together
+-- call `optionalGiven`.  `optionalGiven` is what gets used to solve our Union constraint.
 foreign import frgn3 ::
   forall optionalGiven rest.
-  Method3Rec optionalGiven rest =>
+  Union optionalGiven rest Optional -- optionalGiven must be a subset of Optional (optionalGiven + rest = Optional)
+    -- in this constraint, we expect to know what is `optionalGiven`, and we obviously know Optional, so we solve for `rest`
+    -- if we can solve for `rest` and the Union constraint still holds true, then the constraint is satisfied.  
+    -- If no solution exists, then the type variables used are invalid (and we solved for `rest` so really just 
+    -- `optionalGiven` is invalid).
+  => 
   { b :: Int | optionalGiven } -> Int
 
 x3 :: Int 
@@ -282,9 +290,9 @@ y3 = frgn3 { a: 5, b: 3 }
 -- z :: Int
 -- z = frgn3 { a: 3 }
 
--- does not compile because `z` is given but not required or optional
+-- does not compile because `t` is given but not required or optional
 -- z :: Int
--- z = frgn3 { b: 3, z: 5 }
+-- z = frgn3 { b: 3, t: 5 }
 
 
 --------------------------------------------------------------------------------------
@@ -294,6 +302,9 @@ y3 = frgn3 { a: 5, b: 3 }
 -- This is a much simpler approach than any of the above methods, but requires more
 -- boilerplate, and could introduce subtle bugs if the JS code being called treats 
 -- an existing field that is undefined differently than a field that is not present.
+-- This can be worked around with additional complexity.  
+-- An example of that is here: https://blog.ndk.io/purescript-ffi.html
+-- 
 -- Another advantage to this approach is that the optional fields can be consumed by
 -- PureScript code where it isn't known by the compiler if the optional value is present
 -- or not.
@@ -305,7 +316,7 @@ y3 = frgn3 { a: 5, b: 3 }
 -- once, not for each type that has optional fields.
 
 -- `Undefined` here means pretty much the same thing as Maybe.  You can have an `Undefined Int`
--- which is something that might be an Int, or might be Undefined.  (Note that most foreign
+-- which is something that might be an Int, or might be undefined.  (Note that most foreign
 -- imports must have a corresponding binding in the .js file for the entity being imported, but
 -- a `foreign import data` is just an assertion that some type exists that you will be using in
 -- subsequent bindings, so there is no type definition in the .js file to be imported)
@@ -362,7 +373,7 @@ y4 = frgn4 { b: 3 } (_ { a = Just 5 })
 
 -- frgn5 takes in a record that must include (b :: Int), but may also include any other 
 -- fields, and we'll call all the extra fields `r`.  If I had left off the `| r`, then 
--- this signature would only accept records that contained exactly a (b :: Int) and 
+-- this signature would only accept records that contained exactly (b :: Int) and 
 -- nothing else.
 foreign import frgn5 :: forall r. { b :: Int | r } -> Int
 
@@ -372,9 +383,9 @@ x5 = frgn5 { b: 5 }
 y5 :: Int
 y5 = frgn5 { a: 5, b: 3 }
 
--- compiles even though `z` is not recognized
+-- compiles even though `t` is not recognized
 z5 :: Int
-z5 = frgn5 { b: 3, z: 5 }
+z5 = frgn5 { b: 3, t: 5 }
 
 -- does not compile because `b` is required but not given
 -- z :: Int
