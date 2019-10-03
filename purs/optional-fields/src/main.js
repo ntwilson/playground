@@ -18,8 +18,7 @@ const allOptional = function(x) {
 // return a 2-param function because the foreign import has a constraint 
 exports.frgn = function () { return frgn; } 
 
-// return a 2-param function because the foreign import has a constraint 
-exports.frgn1 = function () { return frgn; }
+exports.frgn1 = frgn;
 
 // return a 2-param function because the foreign import has a constraint 
 exports.frgn2 = function () { return allOptional; }
