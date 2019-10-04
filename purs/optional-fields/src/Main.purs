@@ -7,6 +7,7 @@ import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Console (log)
 import Prim.Row (class Union)
+import Type.Row (type (+))
 import Unsafe.Coerce (unsafeCoerce)
 
 -- This codebase documents several approaches for dealing with JS FFI where JS
@@ -85,7 +86,20 @@ import Unsafe.Coerce (unsafeCoerce)
 --------------------------------------------------------------------------------------
 
 type Required = (b :: Int)
-type AllFields = (a :: Int, b :: Int)
+-- a "row" containing the required fields + any other fields we'll call `optionalGiven`.
+type RequiredPlus optionalGiven = (b :: Int | optionalGiven)
+
+-- with RequiredPlus defined, we could also define Required as:
+-- type Required = RequiredPlus ()
+-- here, by passing unit `()` to RequiredPlus, this is only the required fields.
+
+type Optional = (a :: Int)
+
+-- the sum of the required fields and the optional fields, yielding all allowed fields.
+-- the `+` operator used here takes in an "open" row (e.g., `forall r. ( x :: Int | r)`)
+-- on the left, and a "closed" row (e.g., `(x :: Int)`) on the right, which is why we 
+-- use RequiredPlus on the left (RequiredPlus is open because it also includes any optionalGiven)
+type AllFields = RequiredPlus + Optional
 
 -- an empty type class.  Kind of like an empty interface from other languages that you would expect to apply to 
 -- classes in order to make some assertion about that class.  In this case, the empty type class will be applied
@@ -146,11 +160,13 @@ y = frgn { a: 5, b: 3 }
 -- Main.js to be able to call it.
 --------------------------------------------------------------------------------------
 
--- references AllFields3 from below, copied here for convenience:
+-- references RequiredPlus from above, copied here for convenience:
 -- -- A record that must include (b :: Int) (which is the required field(s)), 
 -- -- but then can include other fields which we will together call `optionalGiven`
--- type AllFields3 optionalGiven = { b :: Int | optionalGiven }
-type Optional = (a :: Int)
+-- type RequiredPlus optionalGiven = ( b :: Int | optionalGiven )
+
+-- references Optional from above, copied here for convenience
+-- type Optional = (a :: Int)
 
 -- A phantom type to represent the object being passed in.  By making it a foreign import, we 
 -- can require constraints to construct this type, but then discard all of the type variables and 
@@ -181,7 +197,7 @@ mkMethod1Rec ::
       -- If no solution exists, then the type variables used are invalid (and we solved for `rest` so really just 
       -- `optionalGiven` is invalid).
     => 
-    AllFields3 optionalGiven -> Method1Rec
+    Record (RequiredPlus optionalGiven) -> Method1Rec
 mkMethod1Rec = unsafeCoerce
   
 
@@ -273,12 +289,12 @@ aa2 = frgn2 { a: 5, b: 3 }
 -- doesn't have a signature, but offer an auto-fix where it adds in the infered signature).
 --------------------------------------------------------------------------------------
 
+-- references RequiredPlus from above, copied here for convenience
+-- -- a "row" containing the required fields + any other fields we'll call `optionalGiven`.
+-- type RequiredPlus optionalGiven = (b :: Int | optionalGiven)
+
 -- references Optional from above, copied here for convenience
 -- type Optional = (a :: Int) 
-
--- A record that must include (b :: Int) (which is the required field(s)), 
--- but then can include other fields which we will together call `optionalGiven`
-type AllFields3 optionalGiven = { b :: Int | optionalGiven }
 
 -- frgn3 is "generic" on 2 type variables, which both get infered.  frgn3 has a constraint for the variable types
 -- using the Union type class.  Union means that the fields in the first
@@ -297,7 +313,7 @@ foreign import frgn3 ::
     -- If no solution exists, then the type variables used are invalid (and we solved for `rest` so really just 
     -- `optionalGiven` is invalid).
   => 
-  AllFields3 optionalGiven -> Int
+  Record (RequiredPlus optionalGiven) -> Int
 
 x3 :: Int 
 x3 = frgn3 { b: 5 }
@@ -352,16 +368,20 @@ maybeToUndefined :: forall a. Maybe a -> Undefined a
 maybeToUndefined (Just v) = unsafeCoerce v  
 maybeToUndefined Nothing = undefined
 
+-- references Required above, copied here for convenience:
+-- type Required = (b :: Int)
+
 -- frgn4Impl would be hidden external to this module, only the wrapper function frgn4 defined below
 -- would be accessible publicly.  frgn4Impl will _always_ be given a record of both `a` and `b`, 
 -- but `a` might be `undefined`
-foreign import frgn4Impl :: { a :: Undefined Int, b :: Int } -> Int
+foreign import frgn4Impl :: { a :: Undefined Int | Required } -> Int
 
-type AllFieldsWithMaybeDefaults = { a :: Maybe Int, b :: Int }
+type AllFieldsWithMaybeDefaults = { a :: Maybe Int | Required } 
+
 -- we take in the required fields as the first argument (through which we'll construct a record
 -- that contains both required _and_ optional fields, with the optional fields given default values),
 -- and then we take in a lambda to apply any changes to the optional fields.
-frgn4 :: { b :: Int } -> (AllFieldsWithMaybeDefaults -> AllFieldsWithMaybeDefaults) -> Int
+frgn4 :: Record Required -> (AllFieldsWithMaybeDefaults -> AllFieldsWithMaybeDefaults) -> Int
 frgn4 { b } copyAndUpdate =
   let 
     {a, b} =
