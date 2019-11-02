@@ -5,9 +5,8 @@ import Prelude
 import Data.Maybe (fromJust)
 import Effect (Effect)
 import Partial.Unsafe (unsafePartial)
-import React (fragmentWithKey)
-import React as React
-import ReactDOM as ReactDOM
+import React.Basic.Hooks as React
+import React.Basic.DOM as ReactDOM
 import Web.DOM.NonElementParentNode (getElementById) as DOM
 import Web.HTML (window) as DOM
 import Web.HTML.HTMLDocument (toNonElementParentNode) as DOM
@@ -15,15 +14,13 @@ import Web.HTML.Window (document) as DOM
 
 import RefreshingPlot (refreshingPlot)
 
-multiPlot :: React.ReactClass {} 
-multiPlot = React.component "MultiPlot" \this ->
-  pure 
-    { state: {}
-    , render: 
-        pure $ fragmentWithKey "TwoPlots" 
-          [ React.createLeafElement refreshingPlot {}
-          , React.createLeafElement refreshingPlot {} ] 
-    }
+multiPlot :: Effect (React.ReactComponent {})
+multiPlot = do
+  refresh <- refreshingPlot
+  React.component "MultiPlot" \this ->
+    pure $ React.fragment
+      [ React.element refresh {}
+      , React.element refresh {} ] 
 
 main :: Effect Unit
 main = void $ do
@@ -37,5 +34,7 @@ main = void $ do
 
   let element' = unsafePartial (fromJust element)
 
-  ReactDOM.render (React.createLeafElement multiPlot {}) element'
+  plot <- multiPlot
+
+  ReactDOM.render (React.element plot {}) element'
 
