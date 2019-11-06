@@ -5,14 +5,15 @@ You can edit this file as you like.
 { name =
     "my-project"
 , dependencies =
-    [ "effect"
-    , "console"
+    [ "console"
+    , "effect"
     , "psci-support"
-    , "react"
-    , "web-html"
-    , "react-dom"
     , "random"
+    , "react"
+    , "react-basic-hooks"
+    , "react-dom"
     , "spec"
+    , "web-html"
     ]
 , packages =
     ./packages.dhall

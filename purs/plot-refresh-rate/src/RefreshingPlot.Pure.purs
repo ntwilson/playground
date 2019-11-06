@@ -9,10 +9,10 @@ module RefreshingPlot.Pure
   ( Time
   , Duration
   , RefreshingPlotState
-  , redrawDurations
   , durationsFromInstants
   , refreshRate
   , refreshingPlotReducer
+  , Refresh (..)
   , initialState
   , mkYData) where
 
@@ -23,11 +23,10 @@ import Data.Array ((..))
 import Data.Foldable (sum)
 import Data.Int as Int
 import Data.List (List, (:))
-import Data.List as List
-import Data.List.Extensions as List
-import Data.Maybe (Maybe(..))
+import Data.List (List(..), length, take) as List
+import Data.List.Extensions (pairwise) as List
 import Data.Traversable (sequence)
-import Data.Tuple (Tuple(..))
+import Data.Tuple.Nested((/\))
 import Effect (Effect)
 import Effect.Random (random)
 
@@ -46,9 +45,7 @@ type Duration = Number
 type RefreshingPlotState = 
   { xData :: Array Number
   , yData :: Array Number
-  , last10RedrawDurations :: List Duration
   , last10RefreshTimes :: List Time
-  , avgRedrawDuration :: Duration
   , avgRefreshRate :: Number }
 
 initialState :: Effect RefreshingPlotState
@@ -57,23 +54,12 @@ initialState = do
   pure 
     { xData: 1 .. 500 <#> Int.toNumber
     , yData
-    , last10RedrawDurations: List.Nil
     , last10RefreshTimes: List.Nil
-    , avgRedrawDuration: 0.0
     , avgRefreshRate: 0.0 }
-
-redrawDurations :: Time -> Time -> List Duration -> { newDurations :: List Duration, avgDuration :: Duration }
-redrawDurations timeBeforeRender timeAfterRender last10RedrawDurations = 
-  let 
-    timeToRedrawInMS = timeAfterRender - timeBeforeRender
-    redraws = List.take 10 $ timeToRedrawInMS:last10RedrawDurations
-    avgRedrawDuration = sum redraws / Int.toNumber (List.length redraws)
-  in
-    { newDurations: redraws, avgDuration: avgRedrawDuration }
 
 durationsFromInstants :: List Time -> List Duration
 durationsFromInstants instants = do
-  Tuple later earlier <- List.pairwise instants 
+  later /\ earlier <- List.pairwise instants 
   pure $ later - earlier
 
 refreshRate :: List Duration -> Number
@@ -85,21 +71,18 @@ refreshRate last10RefreshDurations =
     if nDurations == 0 then 0.0
     else 1000.0 / averageDuration
 
+data Refresh = Refresh Time (Array Number)
 
-refreshingPlotReducer :: Time -> Time -> RefreshingPlotState -> RefreshingPlotState
-refreshingPlotReducer timeBeforeRender timeAfterRender (oldState@{last10RedrawDurations, last10RefreshTimes}) = 
+refreshingPlotReducer :: RefreshingPlotState -> Refresh -> RefreshingPlotState
+refreshingPlotReducer (oldState@{last10RefreshTimes}) (Refresh timeAfterRender newYData) = 
   let 
-    { newDurations: redraws, avgDuration: avgRedrawDuration } = 
-      redrawDurations timeBeforeRender timeAfterRender last10RedrawDurations
-
     newRefreshTimes = List.take 10 $ timeAfterRender : last10RefreshTimes
     last10RefreshDurations = durationsFromInstants newRefreshTimes
 
     avgRefreshRate = refreshRate last10RefreshDurations
 
   in oldState 
-    { avgRedrawDuration = avgRedrawDuration
-    , avgRefreshRate = avgRefreshRate
-    , last10RedrawDurations = redraws
-    , last10RefreshTimes = newRefreshTimes }
+    { avgRefreshRate = avgRefreshRate
+    , last10RefreshTimes = newRefreshTimes
+    , yData = newYData }
 

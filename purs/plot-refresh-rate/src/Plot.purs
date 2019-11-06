@@ -1,6 +1,6 @@
 module Plot (component, PlotSeries) where
 
-import React (ReactClass)
+import React.Basic.Hooks (ReactComponent)
 
 type PlotSeries = 
   { x :: Array Number
@@ -11,7 +11,7 @@ type PlotSeries =
   }
 
 foreign import component
-  :: ReactClass
+  :: ReactComponent
       { data :: Array PlotSeries
       , layout :: { width :: Int, height :: Int, title :: String }
       }
