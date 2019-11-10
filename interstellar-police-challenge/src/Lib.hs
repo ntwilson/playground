@@ -1,9 +1,12 @@
+{-# LANGUAGE OverloadedLists, OverloadedStrings #-}
 module Lib (optimalSolutions) where
+
+import Prelude ()
+import Relude
 
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.List as List
-import qualified Data.Text as Text
 
 --     o
 --     |
@@ -31,16 +34,16 @@ type RebelPossibleLocations = Set Planet
 type MoveSet = (PoliceMoves, RebelPossibleLocations)
 
 possibleRebelMoves :: Planet -> Set Planet
-possibleRebelMoves Outer1 = Set.fromList [Inner1]
-possibleRebelMoves Outer2 = Set.fromList [Inner2]
-possibleRebelMoves Outer3 = Set.fromList [Inner3]
-possibleRebelMoves Inner1 = Set.fromList [Outer1, Center]
-possibleRebelMoves Inner2 = Set.fromList [Outer2, Center]
-possibleRebelMoves Inner3 = Set.fromList [Outer3, Center]
-possibleRebelMoves Center = Set.fromList [Inner1, Inner2, Inner3]
+possibleRebelMoves Outer1 = [Inner1]
+possibleRebelMoves Outer2 = [Inner2]
+possibleRebelMoves Outer3 = [Inner3]
+possibleRebelMoves Inner1 = [Outer1, Center]
+possibleRebelMoves Inner2 = [Outer2, Center]
+possibleRebelMoves Inner3 = [Outer3, Center]
+possibleRebelMoves Center = [Inner1, Inner2, Inner3]
 
 allLocations :: Set Planet
-allLocations = Set.fromList [ Outer1, Outer2, Outer3, Inner1, Inner2, Inner3, Center ] 
+allLocations = [ Outer1, Outer2, Outer3, Inner1, Inner2, Inner3, Center ] 
 
 setConcat :: Ord a => Set (Set a) -> Set a
 setConcat sets = 
@@ -97,5 +100,5 @@ optimalSolutions =
   in 
     case winningTurn of
       Just movesThatWinThisTurn -> Set.map (\(policeMoves, _rebelPositions) -> policeMoves) movesThatWinThisTurn
-      Nothing -> error $ Text.pack "reached the end of an infinite list???"
+      Nothing -> error "reached the end of an infinite list???"
 

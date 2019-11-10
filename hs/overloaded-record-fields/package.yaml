@@ -1,6 +1,6 @@
-name:                interstellar-police-challenge
+name:                overloaded-record-fields
 version:             0.1.0.0
-github:              "githubuser/interstellar-police-challenge"
+github:              "githubuser/overloaded-record-fields"
 license:             BSD3
 author:              "Author name here"
 maintainer:          "example@example.com"
@@ -17,20 +17,16 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/interstellar-police-challenge#readme>
+description:         Please see the README on GitHub at <https://github.com/githubuser/overloaded-record-fields#readme>
 
 dependencies:
 - base >= 4.7 && < 5
-- relude
-- text
-- containers
-- timeit
 
 library:
   source-dirs: src
 
 executables:
-  interstellar-police-challenge-exe:
+  overloaded-record-fields-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -38,10 +34,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - interstellar-police-challenge
+    - overloaded-record-fields
 
 tests:
-  interstellar-police-challenge-test:
+  overloaded-record-fields-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -49,4 +45,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - interstellar-police-challenge
+    - overloaded-record-fields

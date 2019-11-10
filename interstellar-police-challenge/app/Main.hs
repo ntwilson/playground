@@ -1,5 +1,8 @@
 module Main where
 
+import Prelude ()
+import Relude
+
 import Lib (optimalSolutions)
 import System.TimeIt (timeIt)
 import qualified Data.Set as Set 
