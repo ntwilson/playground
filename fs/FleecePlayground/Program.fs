@@ -18,6 +18,21 @@ type JsonOption<'a> = JsonOption of 'a option with
         let! x = ofJson anythingElse
         return JsonOption (Some x)
       }
+
+let inline defaultObjOfJson1 constructor field json = 
+  match json with 
+  | JObject o -> constructor <!> (o .@ field)  
+  | _ -> Failure (sprintf "Expecting an object.  Got %s" (string json))
+    
+let inline defaultObjOfJson2 constructor field1 field2 json = 
+  match json with 
+  | JObject o -> constructor <!> (o .@ field1) <*> (o .@ field2)
+  | _ -> Failure (sprintf "Expecting an object.  Got %s" (string json))
+    
+let inline defaultObjOfJson3 constructor field1 field2 field3 json = 
+  match json with 
+  | JObject o -> constructor <!> (o .@ field1) <*> (o .@ field2) <*> (o .@ field3)
+  | _ -> Failure (sprintf "Expecting an object.  Got %s" (string json))
     
 type Sample = 
   { 
@@ -25,13 +40,8 @@ type Sample =
     Y : int JsonOption
   }
   with
-  static member ToJson { X = x; Y = y } =
-    jobj [ ("x", toJson x); ("y", toJson y) ]
-
-  static member OfJson json = 
-    match json with
-    | JObject o -> (fun x y -> {X = x; Y = y}) <!> (o .@ "x") <*> (o .@ "y")
-    | _ -> Failure (sprintf "Expecting an object of form { x: ..., y: ... }.  Got %s" (string json))
+  static member ToJson { X = x; Y = y } = jobj [ ("x", toJson x); ("y", toJson y) ]
+  static member OfJson json = defaultObjOfJson2 (fun x y -> {X=x; Y=y}) "x" "y" json
 
 [<EntryPoint>]
 let main argv =
