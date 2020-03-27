@@ -19,21 +19,36 @@ type JsonOption<'a> = JsonOption of 'a option with
         return JsonOption (Some x)
       }
 
-let inline defaultObjOfJson1 constructor field json = 
-  match json with 
-  | JObject o -> constructor <!> (o .@ field)  
-  | _ -> Failure (sprintf "Expecting an object.  Got %s" (string json))
-    
-let inline defaultObjOfJson2 constructor field1 field2 json = 
-  match json with 
-  | JObject o -> constructor <!> (o .@ field1) <*> (o .@ field2)
-  | _ -> Failure (sprintf "Expecting an object.  Got %s" (string json))
-    
-let inline defaultObjOfJson3 constructor field1 field2 field3 json = 
-  match json with 
-  | JObject o -> constructor <!> (o .@ field1) <*> (o .@ field2) <*> (o .@ field3)
-  | _ -> Failure (sprintf "Expecting an object.  Got %s" (string json))
-    
+let inline objParseError json = Failure (sprintf "Expecting an object.  Got %s" (string json))
+
+let asObj = function
+  | JObject o -> Success o
+  | json -> objParseError json
+
+let inline defaultObjOfJson1 json constructor field = 
+  monad {
+    let! o = asObj json
+    let! f = o .@ field
+    return constructor f
+  }
+
+let inline defaultObjOfJson2 json constructor field1 field2 = 
+  monad {
+    let! o = asObj json
+    let! f1 = o .@ field1
+    let! f2 = o .@ field2
+    return constructor f1 f2
+  }
+
+let inline defaultObjOfJson3 json constructor field1 field2 field3 = 
+  monad {
+    let! o = asObj json
+    let! f1 = o .@ field1
+    let! f2 = o .@ field2
+    let! f3 = o .@ field3
+    return constructor f1 f2 f3
+  }
+
 type Sample = 
   { 
     X : int JsonOption
@@ -41,7 +56,7 @@ type Sample =
   }
   with
   static member ToJson { X = x; Y = y } = jobj [ ("x", toJson x); ("y", toJson y) ]
-  static member OfJson json = defaultObjOfJson2 (fun x y -> {X=x; Y=y}) "x" "y" json
+  static member OfJson json = defaultObjOfJson2 json (fun x y -> {X=x; Y=y}) "x" "y"
 
 [<EntryPoint>]
 let main argv =
@@ -50,7 +65,10 @@ let main argv =
   let rt : Sample ParseResult = ofJson json
 
   printfn "json str: \"%s\"" (string json)
-  printfn "round-trip object: \"%A\"" rt
+  printfn "round-trip object: %A" rt
+  
+  printfn "bad Sample: %A" (parseJson """ {"x":3.0, "z":5.0} """ : Sample ParseResult)
+
   0 // return an integer exit code
 
 
