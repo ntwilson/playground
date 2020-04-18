@@ -1,0 +1,16 @@
+{
+  "name": "mssql-testing",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/mssql": "^6.0.0",
+    "msnodesqlv8": "^1.1.1",
+    "mssql": "^6.2.0"
+  }
+}
