@@ -14,3 +14,7 @@ exports.queryImpl = function(conn, queryString) {
       return Promise.resolve(result.recordset);
     });
 }
+
+exports.closeImpl = function(conn) {
+  return conn.close();
+}
