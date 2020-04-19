@@ -12,13 +12,13 @@ import Foreign.Generic (class Decode, decode)
 
 
 type KeyedValues = { keyName :: String, value :: String }
-newtype KeyedValuesJson = KeyedValuesJson KeyedValues
-derive instance newtypeKeyedValues :: Newtype KeyedValuesJson _
-instance decodeKeyedValues :: Decode KeyedValuesJson where
-  decode json = 
-    case runExcept $ decode json of
+newtype KeyedValuesDecoder = KeyedValuesDecoder KeyedValues
+derive instance newtypeKeyedValues :: Newtype KeyedValuesDecoder _
+instance decodeKeyedValues :: Decode KeyedValuesDecoder where
+  decode x = 
+    case runExcept $ decode x of
       Right ({ "KeyName": keyName, "Value": value } :: { "KeyName"::_, "Value"::_ }) -> 
-        pure $ KeyedValuesJson { keyName, value }
+        pure $ KeyedValuesDecoder { keyName, value }
       Left err -> throwError err
       
 
@@ -32,10 +32,10 @@ type WeatherValues =
   , latestTimestamp :: Instant
   , isForecasted :: Boolean
   }
-newtype WeatherValuesJson = WeatherValuesJson WeatherValues
-derive instance newtypeWeatherValues :: Newtype WeatherValuesJson _
-instance decodeWeatherValues :: Decode WeatherValuesJson where
-  decode json = case runExcept $ decode json of
+newtype WeatherValuesDecoder = WeatherValuesDecoder WeatherValues
+derive instance newtypeWeatherValues :: Newtype WeatherValuesDecoder _
+instance decodeWeatherValues :: Decode WeatherValuesDecoder where
+  decode x = case runExcept $ decode x of
     Right 
       ( { time: (InstantFromDB time)
         , weather_value
@@ -47,7 +47,7 @@ instance decodeWeatherValues :: Decode WeatherValuesJson where
         , is_forecasted 
         } :: { time::_, weather_value::_, weather_attribute::_, weather_station::_, file_timestamp::_, entry_timestamp::_, latest_timestamp::_, is_forecasted::_ }) ->
 
-      pure $ WeatherValuesJson 
+      pure $ WeatherValuesDecoder 
         { time
         , weatherValue: weather_value
         , weatherAttribute: weather_attribute
