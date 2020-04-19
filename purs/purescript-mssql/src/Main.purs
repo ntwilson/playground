@@ -10,8 +10,7 @@ import Database (connect, query)
 import Database.ORM (KeyedValues, KeyedValuesJson, WeatherValues, WeatherValuesJson)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, message)
-import Effect.Class (liftEffect)
-import Effect.Console (log)
+import Effect.Class.Console (log)
 import Foreign.Generic (class Decode, Foreign, decode)
 
 decode' :: forall m a. Monad m => Decode a => Foreign -> ExceptT String m a
@@ -40,7 +39,7 @@ getAFewWeatherValues = runExceptT $ do
 main :: Effect Unit
 main = launchAff_ do
   result <- getKeyedValues
-  liftEffect $ case result of 
+  case result of 
     Right values -> 
       log ("Got 'em! " <> show values)
     Left error ->
