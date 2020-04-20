@@ -10,9 +10,9 @@ import Data.List.Infinite as InfList
 import Data.List.Lazy ((:), nil)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_)
+import Effect.Aff (launchAff_)
 import Partial.Unsafe (unsafePartial)
-import Test.Spec (SpecT, describe, it)
+import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual, shouldSatisfy)
 import Test.Spec.Reporter (consoleReporter)
 import Test.Spec.Runner (runSpec)
@@ -26,7 +26,7 @@ illFormedList = InfList.iterate (const 0) 0 { maxElements: 1000 } # InfList.filt
 hung :: ApplicationHung
 hung = ApplicationHung "Program execution hung. This infinite sequence was allowed to evaluate elements for too long."
 
-infListSpecs :: SpecT Aff Unit Identity Unit
+infListSpecs :: Spec Unit
 infListSpecs = unsafePartial do
   describe "InfList" do
     describe "show" do

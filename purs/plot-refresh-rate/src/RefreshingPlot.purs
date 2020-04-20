@@ -4,9 +4,9 @@ import Prelude
 
 import Effect (Effect)
 import Plot as Plot
-import React.Basic.DOM as React
-import React.Basic.Hooks (ReactComponent, component, readRef, (/\))
-import React.Basic.Hooks as React
+import React.Basic.DOM (div, text) as React
+import React.Basic.Hooks (ReactComponent, component, (/\))
+import React.Basic.Hooks (bind, discard, element, fragment, useEffect, useReducer) as React
 import RefreshingPlot.Pure (initialState, mkYData, refreshingPlotReducer, Refresh(..))
 import Timer (nowMS, setTimeout)
 
@@ -14,7 +14,7 @@ refreshingPlot :: Effect (ReactComponent { })
 refreshingPlot = do
   init <- initialState
   currentTime <- nowMS
-  component "RefreshingPlot" \this -> React.do
+  component "RefreshingPlot" \props -> React.do
     state /\ dispatch <- React.useReducer init refreshingPlotReducer
 
     React.useEffect state do

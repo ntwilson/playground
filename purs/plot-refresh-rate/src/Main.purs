@@ -17,7 +17,7 @@ import RefreshingPlot (refreshingPlot)
 multiPlot :: Effect (React.ReactComponent {})
 multiPlot = do
   refresh <- refreshingPlot
-  React.component "MultiPlot" \this ->
+  React.component "MultiPlot" \props ->
     pure $ React.fragment
       [ React.element refresh {}
       , React.element refresh {} ] 

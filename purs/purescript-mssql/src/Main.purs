@@ -3,7 +3,6 @@ module Main where
 import Prelude
 
 import Control.Monad.Except (Except, ExceptT(..), except, runExcept, runExceptT, withExcept, withExceptT)
-import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse)

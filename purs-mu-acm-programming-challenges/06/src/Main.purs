@@ -54,8 +54,9 @@ maxDigit =
     numDirectDigits = 10
     numUpperDigits = 26
     numLowerDigits = 26
+    numTotalDigits = numDirectDigits + numUpperDigits + numLowerDigits
   in
-    numDirectDigits + numUpperDigits + numLowerDigits - 1
+    numTotalDigits - 1
 
 digitFromInt :: Int -> Maybe Digit
 digitFromInt i 
@@ -63,10 +64,15 @@ digitFromInt i
   | otherwise = Nothing
 
 renderer :: Digit -> DigitRenderer
-renderer (Digit i)
-  | 0 <= i && i < 10 = Direct i
-  | (let x = i - 10 in 0 <= x && x < 26) = Upper $ LetterIndex $ i - 10
-  | otherwise = Lower $ LetterIndex $ i - 10 - 26
+renderer (Digit i) = ans
+  where
+    ans
+      | 0 <= i && i < 10 = Direct i
+      | 0 <= upperIndex && upperIndex < 26 = Upper $ LetterIndex $ upperIndex
+      | otherwise = Lower $ LetterIndex $ lowerIndex
+
+    upperIndex = i - 10
+    lowerIndex = upperIndex - 26
 
 renderDigit :: Digit -> String
 renderDigit d = case renderer d of
