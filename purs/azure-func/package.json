@@ -1,0 +1,17 @@
+{
+  "name": "azure-func",
+  "scripts": {
+    "test": "echo \"No tests yet...\""
+  },
+  "author": "",
+  "devDependencies": {
+    "azure-functions-core-tools": "^3.0.2534",
+    "purescript": "^0.13.8",
+    "spago": "^0.15.3"
+  },
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {},
+  "license": "ISC",
+  "description": ""
+}
