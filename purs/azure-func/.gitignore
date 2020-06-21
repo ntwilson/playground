@@ -2,6 +2,7 @@ bin
 obj
 csx
 .vs
+.vscode/
 edge
 Publish
 
@@ -29,6 +30,7 @@ dist
 output/
 .spago/
 .purs-repl
+.psc-ide-port
 
 # Local python packages
 .python_packages/
