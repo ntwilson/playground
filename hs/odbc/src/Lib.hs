@@ -1,7 +1,5 @@
-{-# LANGUAGE OverloadedStrings, PatternSynonyms, ViewPatterns #-}
 module Lib where
 
-import Prelude ()
 import Relude
 
 import Database.ODBC.SQLServer (FromRow, fromRow, connect, query, close, Value(..))
