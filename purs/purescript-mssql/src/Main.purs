@@ -21,7 +21,7 @@ import Foreign.Generic (class Decode, Foreign, decode)
 decode' :: forall a. Decode a => Foreign -> Either (NonEmptyList ForeignError) a
 decode' = decode >>> runExceptT >>> unwrap
 
-eitherToM :: forall m e a. MonadEffect m => MonadThrow Error m => Show e => Either e a -> m a
+eitherToM :: forall m e a. MonadThrow Error m => Show e => Either e a -> m a
 eitherToM (Left e) = throwError (error (show e)) 
 eitherToM (Right a) = pure a
 
