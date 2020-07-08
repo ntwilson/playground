@@ -34,6 +34,10 @@ default-extensions:
 - PatternSynonyms
 - ViewPatterns
 
+ghc-options:
+- -Wall
+- -Werror
+
 executables:
   my-odbc-exe:
     main:                Main.hs
