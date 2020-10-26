@@ -2,10 +2,8 @@ module TryStuff where
 
 import Prelude
 
-import Data.Array (mapMaybe)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.Maybe (Maybe(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 data SomeShape
