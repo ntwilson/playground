@@ -82,17 +82,7 @@ connErr = newDatabaseConnectionException { server: "MSSQL03", database: "testing
 queryErr :: forall a b. DatabaseQueryException NoChild a b
 queryErr = newDatabaseQueryException { server: "MSSQL03", database: "testing", attemptedQuery: "SELECT * FROM debug_log", message: "timeout exceeded", child: expand noChild }
 
-errs :: forall a b.
-  Array 
-    (Exception 
-      (DatabaseExceptionRow 
-        ( DatabaseQueryExceptionRow NoChild 
-        + DatabaseConnectionExceptionRow NoChild 
-        + a
-        ) 
-      + b
-      )
-    )
+errs :: Array (Exception _) 
 errs = [connErr, queryErr]
 
 main :: Effect Unit
