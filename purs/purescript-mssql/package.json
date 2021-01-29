@@ -14,5 +14,8 @@
   "dependencies": {
     "msnodesqlv8": "^1.1.1",
     "mssql": "^6.2.0"
+  },
+  "devDependencies": {
+    "spago": "^0.15.3"
   }
 }

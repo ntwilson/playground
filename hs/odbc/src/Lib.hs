@@ -1,8 +1,6 @@
-{-# LANGUAGE OverloadedStrings, PatternSynonyms, ViewPatterns #-}
 module Lib where
 
-import Prelude ()
-import Relude
+import Relude 
 
 import Database.ODBC.SQLServer (FromRow, fromRow, connect, query, close, Value(..))
 import Data.Time.LocalTime (LocalTime)
@@ -41,5 +39,7 @@ someFunc = do
   rows <- query conn "SELECT TOP 2 * FROM sendout_daily_actuals" :: IO [SendoutDailyActuals]
   traverse_ print rows
   close conn
+  
+  
 
 

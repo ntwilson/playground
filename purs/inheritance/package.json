@@ -1,0 +1,21 @@
+{
+  "name": "inheritance",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {
+    "purescript": "^0.13.8",
+    "purescript-psa": "^0.8.0",
+    "spago": "^0.16.0"
+  },
+  "dependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "spago build --purs-args \"--stash\""
+  },
+  "author": "",
+  "license": "ISC"
+}
