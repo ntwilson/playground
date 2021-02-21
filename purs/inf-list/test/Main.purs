@@ -2,9 +2,7 @@ module Test.Main where
 
 import Prelude
 
-import Data.Array as Array
 import Data.Either (Either(..), isLeft, isRight)
-import Data.Identity (Identity)
 import Data.List.Infinite (ApplicationHung(..), InfList)
 import Data.List.Infinite as InfList
 import Data.List.Lazy ((:), nil)
@@ -22,9 +20,6 @@ wellFormedList = InfList.iterate (_ + 1) 0 { maxElements: 10000 }
 
 illFormedList :: InfList Int
 illFormedList = InfList.iterate (const 0) 0 { maxElements: 1000 } # InfList.filter (_ /= 0)
-
-hung :: ApplicationHung
-hung = ApplicationHung "Program execution hung. This infinite sequence was allowed to evaluate elements for too long."
 
 infListSpecs :: Spec Unit
 infListSpecs = unsafePartial do
@@ -48,7 +43,24 @@ infListSpecs = unsafePartial do
           `shouldEqual` (Right 0 : Right 1 : Right 2 : Right 3 : Right 4 : nil)
 
         (illFormedList # InfList.takeLazy 5)
-          `shouldEqual` (Left hung : nil)
+          `shouldEqual` (Left ApplicationHung : nil)
+
+    describe "takeWhile" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.takeWhile (_ < 5))
+          `shouldEqual` Right (0:1:2:3:4: nil)
+
+        (illFormedList # InfList.takeWhile (_ < 5))
+          `shouldSatisfy` isLeft
+
+    describe "takeWhileLazy" do
+      it "doesn't hang" do
+        (wellFormedList # InfList.takeWhileLazy (_ < 5))
+          `shouldEqual` (Right 0 : Right 1 : Right 2 : Right 3 : Right 4 : nil)
+
+        (illFormedList # InfList.takeWhileLazy (_ < 5))
+          `shouldEqual` (Left ApplicationHung : nil)
+
 
     describe "find" do
       it "doesn't hang" do
