@@ -4,6 +4,8 @@ module Data.List.Infinite
   , iterate
   , take
   , takeLazy
+  , takeWhile
+  , takeWhileLazy
   , find
   , index
   , mapMaybe
@@ -20,26 +22,23 @@ module Data.List.Infinite
 
 import Prelude
 
+import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Data.Array as Array
-import Data.Either (Either(..), note)
+import Data.Either (Either(..))
 import Data.Lazy (defer)
 import Data.List.Lazy (List(..), Step(..), intercalate)
 import Data.List.Lazy as List
-import Data.Maybe (Maybe(..), isJust)
-import Data.Newtype (class Newtype)
+import Data.Maybe (Maybe(..), isJust, maybe)
 
 newtype InfList a = InfList (List a)
 
-newtype ApplicationHung = ApplicationHung String
+data ApplicationHung = ApplicationHung
 
 derive instance eqApplicationHung :: Eq ApplicationHung 
 derive instance ordApplicationHung :: Ord ApplicationHung
-derive instance newtypeApplicationHung :: Newtype ApplicationHung _
+derive instance functorInfList :: Functor InfList 
 instance showApplicationHung :: Show ApplicationHung where 
-  show (ApplicationHung msg) = "\"" <> msg <> "\""
-
-hung :: ApplicationHung
-hung = ApplicationHung "Program execution hung. This infinite sequence was allowed to evaluate elements for too long."
+  show ApplicationHung = "\"Program execution hung. This infinite sequence was allowed to evaluate elements for too long.\""
 
 instance showInfList :: Show a => Show (InfList a) where
   show xs = 
@@ -49,9 +48,9 @@ instance showInfList :: Show a => Show (InfList a) where
         in "InfList [" <> listSubstring <> ", ...]"
       Left hungErr -> 
         "InfList <application hung while showing the list>"
-        
-instance functorInfList :: Functor InfList where
-  map f (InfList xs) = InfList $ map f xs
+
+throwFromMaybe :: forall a m. MonadThrow ApplicationHung m => Maybe a -> m a
+throwFromMaybe = maybe (throwError ApplicationHung) pure 
 
 -- | create a new "infinite" list.  Lists aren't actually infinite,
 -- | but bounded by a max number of elements to ensure that the program
@@ -60,10 +59,10 @@ iterate :: forall a. (a -> a) -> a -> { maxElements :: Int } -> InfList a
 iterate incrementor init { maxElements } = 
   InfList $ List.take maxElements $ List.iterate incrementor init
 
-take :: forall a. Int -> InfList a -> Either ApplicationHung (List a)
+take :: forall a m. MonadThrow ApplicationHung m => Int -> InfList a -> m (List a)
 take n (InfList xs) = 
   let result = List.take n xs
-  in if List.length result == n then Right result else Left hung
+  in if List.length result == n then pure result else throwError ApplicationHung
 
 -- | Lazily returns up to the first N elements of the sequence.  
 -- | Note that reaching the end of the infinite sequence represents
@@ -73,12 +72,12 @@ take n (InfList xs) =
 -- | the resulting sequence would contain N elements.  
 -- | If you are able to eagerly evaluate the first n elements, consider using 
 -- | `take` instead, which is likely easier to consume.
-takeLazy :: forall a. Int -> InfList a -> List (Either ApplicationHung a)
+takeLazy :: forall a m. MonadThrow ApplicationHung m => Int -> InfList a -> List (m a)
 takeLazy n (InfList xs) =
-  lazySnoc (Right <$> xs) (Left hung)
+  lazySnoc (pure <$> xs) (throwError ApplicationHung)
   # List.take n
   
-takeWhile :: forall a. (a -> Boolean) -> InfList a -> Either ApplicationHung (List a)
+takeWhile :: forall a m. MonadThrow ApplicationHung m => (a -> Boolean) -> InfList a -> m (List a)
 takeWhile predicate infxs@(InfList xs) = 
   find (not <<< predicate) infxs
   <#> (const $ List.takeWhile predicate xs)
@@ -91,19 +90,22 @@ lazySnoc xs x =
       Nothing -> Cons x List.nil
 
 
-takeWhileLazy :: forall a. (a -> Boolean) -> InfList a -> List (Either ApplicationHung a)
-takeWhileLazy predicate (InfList xs) = 
-  lazySnoc (Right <$> xs) (Left hung)
-  # List.takeWhile (case _ of Left _ -> true
-                              Right x -> predicate x)
+takeWhileLazy :: forall a m. MonadThrow ApplicationHung m => (a -> Boolean) -> InfList a -> List (m a)
+takeWhileLazy predicate (InfList xs) = go xs
+  where 
+    go ys = 
+      List $ defer \_ -> 
+        case List.uncons ys of 
+          Just { head: y, tail } | predicate y -> Cons (pure y) (go tail)
+          Just { head: y, tail } -> Nil
+          Nothing -> Cons (throwError ApplicationHung) List.nil
 
-
-index :: forall a. Int -> InfList a -> Either ApplicationHung a
+index :: forall a m. MonadThrow ApplicationHung m => Int -> InfList a -> m a
 index i (InfList xs) = 
-  note hung $ List.index xs i
+  throwFromMaybe $ List.index xs i
 
-find :: forall a. (a -> Boolean) -> InfList a -> Either ApplicationHung a
-find predicate (InfList xs) = note hung $ go xs
+find :: forall a m. MonadThrow ApplicationHung m => (a -> Boolean) -> InfList a -> m a
+find predicate (InfList xs) = throwFromMaybe $ go xs
   where
     go xs' = case List.uncons xs' of
       Just { head: h, tail } | predicate h -> Just h
@@ -139,13 +141,13 @@ drop n (InfList xs) = InfList $ List.drop n xs
 dropWhile :: forall a. (a -> Boolean) -> InfList a -> InfList a
 dropWhile predicate (InfList xs) = InfList $ List.dropWhile predicate xs
 
-head :: forall a. InfList a -> Either ApplicationHung a
-head (InfList xs) = note hung $ List.head xs
+head :: forall a m. MonadThrow ApplicationHung m => InfList a -> m a
+head (InfList xs) = throwFromMaybe $ List.head xs
 
-uncons :: forall a. InfList a -> Either ApplicationHung { head :: a, tail :: InfList a }
+uncons :: forall a m. MonadThrow ApplicationHung m => InfList a -> m { head :: a, tail :: InfList a }
 uncons (InfList xs) = 
   List.uncons xs <#> (\x -> x { tail = InfList x.tail })
-  # note hung
+  # throwFromMaybe
   
 mapWithIndex :: forall a b. (Int -> a -> b) -> InfList a -> InfList b
 mapWithIndex projection (InfList xs) = 
@@ -159,17 +161,17 @@ mapWithIndex projection (InfList xs) =
 zipWith :: forall a b c. (a -> b -> c) -> InfList a -> InfList b -> InfList c
 zipWith fn (InfList xs) (InfList ys) = InfList $ List.zipWith fn xs ys
 
-zipWithL :: forall a b c. (a -> b -> c) -> InfList a -> Array b -> Either ApplicationHung (Array c)
+zipWithL :: forall a b c m. MonadThrow ApplicationHung m => (a -> b -> c) -> InfList a -> Array b -> m (Array c)
 zipWithL fn (InfList xs) ys = 
   let 
     xsArr = List.take (Array.length ys) xs # Array.fromFoldable
     result = Array.zipWith fn xsArr ys
   in
     if Array.length ys == Array.length result 
-    then Right $ Array.fromFoldable result
-    else Left hung
+    then pure $ Array.fromFoldable result
+    else throwError ApplicationHung
 
-zipWithR :: forall a b c. (a -> b -> c) -> Array b -> InfList a -> Either ApplicationHung (Array c)
+zipWithR :: forall a b c m. MonadThrow ApplicationHung m => (a -> b -> c) -> Array b -> InfList a -> m (Array c)
 zipWithR fn = flip (zipWithL fn)
 
 -- tests stop here -- 
