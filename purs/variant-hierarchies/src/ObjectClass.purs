@@ -26,7 +26,10 @@ instanceOf :: ∀ sym shared subtypes subtype combinedWithDupes combined tail.
 instanceOf proxy cls = do
   subtype <- prj proxy cls.subtype
   pure $ Record.merge (Record.delete (Proxy :: _ "subtype") cls) subtype
-  
+
+forgetSubtype :: ∀ shared subtypes. Lacks "subtype" shared => ObjectClass shared subtypes -> Record shared
+forgetSubtype = Record.delete (Proxy :: _ "subtype")
+
 cast :: forall sym subtypes shared subtype combinedWithDupes combined.
   Cons sym (Record subtype) () subtypes => IsSymbol sym => 
   Union shared subtype combinedWithDupes => Nub combinedWithDupes combined => Lacks "subtype" shared => 

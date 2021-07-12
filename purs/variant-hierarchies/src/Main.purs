@@ -2,10 +2,10 @@ module Main where
 
 import Prelude
 
-import Data.Variant (inj)
+import Data.Array as Array
 import Effect (Effect)
-import Effect.Class.Console (log, logShow)
-import ObjectClass (NoSubtype, ObjectClass, cast, expandSubtype, instanceOf, new, newLeaf, noSubtype)
+import Effect.Class.Console (logShow)
+import ObjectClass (NoSubtype, ObjectClass, cast, forgetSubtype, instanceOf, new, newLeaf)
 import Type.Prelude (Proxy(..))
 import Type.Row (type (+))
 
@@ -59,7 +59,7 @@ main = do
   logShow (cast databaseException directQueryErr).server
   logShow (directQueryErr # cast databaseException # cast databaseQueryException).attemptedQuery
 
-  -- logShow (errs <#> (instanceOf databaseException >=> instanceOf databaseQueryException))
-  -- logShow (errs <#> asDatabaseQueryException)
-  -- logShow (errs <#> instanceOf databaseException)
+  logShow (errs # Array.mapMaybe (instanceOf databaseException >=> instanceOf databaseConnectionException) <#> forgetSubtype)
+  logShow (errs # Array.mapMaybe (instanceOf databaseException >=> instanceOf databaseQueryException) <#> forgetSubtype)
+  logShow (errs # Array.mapMaybe (instanceOf databaseException) <#> forgetSubtype)
 
