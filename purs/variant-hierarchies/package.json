@@ -1,0 +1,15 @@
+{
+  "name": "variant-hierarchies",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "spago build --purs-args \"--stash --censor-lib --censor-codes=ShadowedName,ImplicitQualifiedImport,MissingTypeDeclaration,HidingImport\""
+  },  
+  "author": "",
+  "license": "ISC"
+}

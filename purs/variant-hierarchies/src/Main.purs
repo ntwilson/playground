@@ -2,96 +2,64 @@ module Main where
 
 import Prelude
 
-import Data.Maybe (Maybe)
-import Data.Variant (SProxy(..), Variant, expand, inj, prj)
+import Data.Variant (inj)
 import Effect (Effect)
-import Effect.Class.Console (logShow)
-import Record (delete, merge)
+import Effect.Class.Console (log, logShow)
+import ObjectClass (NoSubtype, ObjectClass, cast, expandSubtype, instanceOf, new, newLeaf, noSubtype)
+import Type.Prelude (Proxy(..))
 import Type.Row (type (+))
 
 type ExceptionData r = (message :: String | r)
-type Exception r = Record (ExceptionData + (child :: Variant r))
+type Exception r = ObjectClass (ExceptionData ()) r
 
-databaseException = SProxy :: SProxy "databaseException"
+databaseException = Proxy :: Proxy "databaseException"
 type DatabaseExceptionData r = (server :: String, database :: String | r)
-type DatabaseExceptionRow a b = (databaseException :: Record (DatabaseExceptionData + (child :: Variant a)) | b)
+type DatabaseExceptionRow a b = (databaseException :: ObjectClass (DatabaseExceptionData ()) a | b)
 type DatabaseException a b = Exception (DatabaseExceptionRow a b)
 
-type NoChild = (noChild :: Unit) 
+newDatabaseException :: ∀ a b. { | ExceptionData + DatabaseExceptionData () } -> DatabaseException a b
+newDatabaseException = new databaseException <<< newLeaf
 
-noChild :: Variant NoChild
-noChild = inj (SProxy :: SProxy "noChild") unit
 
-newDatabaseException :: forall a b.
-  {message :: String, server :: String, database :: String, child :: Variant a} -> DatabaseException a b
-newDatabaseException {message, server, database, child} = 
-  { message, child: inj databaseException { server, database, child } }
-
-asDatabaseException :: forall a b. DatabaseException a b -> Maybe (Record (ExceptionData + DatabaseExceptionData + (child :: Variant a)))
-asDatabaseException exn = do
-  dbExn <- prj databaseException exn.child
-  pure { message: exn.message, server: dbExn.server, database: dbExn.database, child: dbExn.child }
-
-asOnlyDatabaseException :: forall a b. DatabaseException a b -> Maybe (Record (ExceptionData + DatabaseExceptionData + ()))
-asOnlyDatabaseException exn = delete (SProxy :: SProxy "child") <$> asDatabaseException exn
-
-databaseConnectionException = SProxy :: SProxy "databaseConnectionException"
-type DatabaseConnectionExceptionRow a b = (databaseConnectionException :: {child :: Variant a} | b)
+databaseConnectionException = Proxy :: Proxy "databaseConnectionException"
+type DatabaseConnectionExceptionRow a b = (databaseConnectionException :: ObjectClass () a | b)
 type DatabaseConnectionException a b c = DatabaseException (DatabaseConnectionExceptionRow a b) c
 
-newDatabaseConnectionException :: forall a b c.
-  {message :: String, server :: String, database :: String, child :: Variant a } -> DatabaseConnectionException a b c
-newDatabaseConnectionException {message, server, database, child} = 
-  newDatabaseException {message, server, database, child: inj databaseConnectionException {child}}
+newDatabaseConnectionException :: ∀ a b c.
+  { | ExceptionData + DatabaseExceptionData () } -> DatabaseConnectionException a b c
+newDatabaseConnectionException = new databaseException <<< new databaseConnectionException <<< newLeaf 
 
-asDatabaseConnectionException :: forall a b c. 
-  DatabaseConnectionException a b c -> Maybe (Record (ExceptionData + DatabaseExceptionData + (child :: Variant a)))
-asDatabaseConnectionException exn = do
-  dbExn <- asDatabaseException exn
-  dbcExn <- prj databaseConnectionException dbExn.child
-  pure $ dbExn { child = dbcExn.child }
-
-asOnlyDatabaseConnectionException :: forall a b c. DatabaseConnectionException a b c -> Maybe (Record (ExceptionData + DatabaseExceptionData + ()))
-asOnlyDatabaseConnectionException exn = delete (SProxy :: SProxy "child") <$> asDatabaseConnectionException exn
-
-
-databaseQueryException = SProxy :: SProxy "databaseQueryException"
+databaseQueryException = Proxy :: _ "databaseQueryException"
 type DatabaseQueryExceptionData r = (attemptedQuery :: String | r)
-type DatabaseQueryExceptionRow a b = (databaseQueryException :: Record (DatabaseQueryExceptionData + (child :: Variant a)) | b)
+type DatabaseQueryExceptionRow a b = (databaseQueryException :: ObjectClass (DatabaseQueryExceptionData ()) a | b)
 type DatabaseQueryException a b c = DatabaseException (DatabaseQueryExceptionRow a b) c
 
-newDatabaseQueryException :: forall a b c.
-  {message :: String, server :: String, database :: String, attemptedQuery :: String, child :: Variant a} -> DatabaseQueryException a b c
-newDatabaseQueryException {message, server, database, attemptedQuery, child} = 
-  newDatabaseException {message, server, database, child: inj databaseQueryException {attemptedQuery, child}}
+newDatabaseQueryException :: ∀ a b c.
+  { | ExceptionData + DatabaseExceptionData + DatabaseQueryExceptionData () } -> DatabaseQueryException a b c
+newDatabaseQueryException = new databaseException <<< new databaseQueryException <<< newLeaf
   
 asDatabaseQueryException :: forall a b c.
-  DatabaseQueryException a b c -> Maybe (Record (ExceptionData + DatabaseExceptionData + DatabaseQueryExceptionData + (child :: Variant a)))
-asDatabaseQueryException exn = do
-  dbExn <- asDatabaseException exn
-  dbqExn <- prj databaseQueryException dbExn.child
-  pure $ (merge {attemptedQuery: dbqExn.attemptedQuery} dbExn) { child = dbqExn.child }
+  DatabaseQueryException a b c -> _
+asDatabaseQueryException exn = exn # instanceOf databaseException >>= instanceOf databaseQueryException
   
-asOnlyDatabaseQueryException :: forall a b c.
-  DatabaseQueryException a b c -> Maybe (Record (ExceptionData + DatabaseExceptionData + DatabaseQueryExceptionData + ()))
-asOnlyDatabaseQueryException exn = delete (SProxy :: SProxy "child") <$> asDatabaseQueryException exn
+connErr :: ∀ a b c. DatabaseConnectionException a b c
+connErr = newDatabaseConnectionException { server: "MSSQL03", database: "testing", message: "couldn't connect" }
 
-connErr :: forall a b. DatabaseConnectionException NoChild a b
-connErr = newDatabaseConnectionException { server: "MSSQL03", database: "testing", message: "couldn't connect", child: expand noChild }
-
-queryErr :: forall a b. DatabaseQueryException NoChild a b
-queryErr = newDatabaseQueryException { server: "MSSQL03", database: "testing", attemptedQuery: "SELECT * FROM debug_log", message: "timeout exceeded", child: expand noChild }
+queryErr :: ∀ a b c. DatabaseQueryException a b c
+queryErr = newDatabaseQueryException { server: "MSSQL03", database: "testing", attemptedQuery: "SELECT * FROM debug_log", message: "timeout exceeded" }
 
 errs :: Array (Exception _) 
 errs = [connErr, queryErr]
 
 main :: Effect Unit
 main = do
-  -- logShow queryErr.message
-  -- logShow ((case_ # on databaseException _.server) $ queryErr.child)
-  -- logShow queryErr.child.child.attemptedQuery
+  let (directQueryErr :: DatabaseQueryException () () ()) = queryErr
 
-  logShow (errs <#> asOnlyDatabaseConnectionException)
-  logShow (errs <#> asOnlyDatabaseQueryException)
-  logShow (errs <#> asOnlyDatabaseException)
+  logShow queryErr.message
+  logShow (cast databaseException directQueryErr).server
+  logShow (directQueryErr # cast databaseException # cast databaseQueryException).attemptedQuery
+
+  logShow (errs <#> (instanceOf databaseException >=> instanceOf databaseQueryException))
+  logShow (errs <#> asDatabaseQueryException)
+  logShow (errs <#> instanceOf databaseException)
 
