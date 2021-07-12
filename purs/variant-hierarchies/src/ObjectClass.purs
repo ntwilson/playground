@@ -17,32 +17,30 @@ noSubtype = inj (Proxy :: _ "noSubtype") unit
 
 type ObjectClass :: Row Type -> Row Type -> Type
 type ObjectClass shared subtypes = 
-  Record ( subtype :: Variant (NoSubtype subtypes) | shared )
+  Record ( subtype :: Variant subtypes | shared )
 
 instanceOf :: ∀ sym shared subtypes subtype combinedWithDupes combined tail. 
   IsSymbol sym => Union shared subtype combinedWithDupes => Nub combinedWithDupes combined => 
-  Lacks "subtype" shared => Cons sym (Record subtype) tail (NoSubtype subtypes) =>
+  Lacks "subtype" shared => Cons sym (Record subtype) tail subtypes =>
   Proxy sym -> ObjectClass shared subtypes -> Maybe (Record combined)
 instanceOf proxy cls = do
   subtype <- prj proxy cls.subtype
   pure $ Record.merge (Record.delete (Proxy :: _ "subtype") cls) subtype
   
-cast :: forall t271 t272 t276 t280 t282 t283 t284.
-  Cons t272 (Record t282) () t276 => IsSymbol t272 => Union t280 t282 t283 => Nub t283 t284 => Lacks "subtype" t280 => t271 t272
-                                                                                                                       -> { subtype :: Variant t276
-                                                                                                                          | t280
-                                                                                                                          }
-                                                                                                                          -> Record t284
+cast :: forall sym subtypes shared subtype combinedWithDupes combined.
+  Cons sym (Record subtype) () subtypes => IsSymbol sym => 
+  Union shared subtype combinedWithDupes => Nub combinedWithDupes combined => Lacks "subtype" shared => 
+  Proxy sym -> ObjectClass shared subtypes -> Record combined
 cast proxy cls = Record.merge (Record.delete (Proxy :: _ "subtype") cls) subtypeVals
   where
     subtypeVals = (case_ # on proxy identity) cls.subtype
 
-newLeaf :: ∀ shared r. Lacks "subtype" shared => Record shared -> ObjectClass shared r
+newLeaf :: ∀ shared r. Lacks "subtype" shared => Record shared -> ObjectClass shared (NoSubtype r)
 newLeaf rec = Record.insert (Proxy :: _ "subtype") noSubtype rec
 
 
 new :: ∀ sym shared subtypes combined tail subtype sharedList subtypeList. 
-  IsSymbol sym => Lacks "subtype" shared => Cons sym (Record subtype) tail (NoSubtype subtypes) => 
+  IsSymbol sym => Lacks "subtype" shared => Cons sym (Record subtype) tail subtypes => 
   ExtractFields sharedList combined shared => ExtractFields subtypeList combined subtype => 
   Union shared subtype combined => 
   RL.RowToList shared sharedList => RL.RowToList subtype subtypeList => 
@@ -82,8 +80,8 @@ expandSubtype cl@{subtype} = cl { subtype = expand subtype }
 type PointData r = ( x :: Int, y :: String | r )
 type Point subtype = ObjectClass (PointData ()) subtype
 
-a :: Point ()
-a = { x: 5, y: "yo", subtype: noSubtype }
+a :: Point (NoSubtype ()) 
+a = newLeaf { x: 5, y: "yo" }
 
 type ThreeDPointData r = { z :: Number | r }
 type ThreeDPoint r = Point ( "3DPoint" :: ThreeDPointData () | r )

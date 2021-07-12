@@ -17,7 +17,7 @@ type DatabaseExceptionData r = (server :: String, database :: String | r)
 type DatabaseExceptionRow a b = (databaseException :: ObjectClass (DatabaseExceptionData ()) a | b)
 type DatabaseException a b = Exception (DatabaseExceptionRow a b)
 
-newDatabaseException :: ∀ a b. { | ExceptionData + DatabaseExceptionData () } -> DatabaseException a b
+newDatabaseException :: ∀ a b. { | ExceptionData + DatabaseExceptionData () } -> DatabaseException (NoSubtype a) b
 newDatabaseException = new databaseException <<< newLeaf
 
 
@@ -26,7 +26,7 @@ type DatabaseConnectionExceptionRow a b = (databaseConnectionException :: Object
 type DatabaseConnectionException a b c = DatabaseException (DatabaseConnectionExceptionRow a b) c
 
 newDatabaseConnectionException :: ∀ a b c.
-  { | ExceptionData + DatabaseExceptionData () } -> DatabaseConnectionException a b c
+  { | ExceptionData + DatabaseExceptionData () } -> DatabaseConnectionException (NoSubtype a) b c
 newDatabaseConnectionException = new databaseException <<< new databaseConnectionException <<< newLeaf 
 
 databaseQueryException = Proxy :: _ "databaseQueryException"
@@ -35,17 +35,17 @@ type DatabaseQueryExceptionRow a b = (databaseQueryException :: ObjectClass (Dat
 type DatabaseQueryException a b c = DatabaseException (DatabaseQueryExceptionRow a b) c
 
 newDatabaseQueryException :: ∀ a b c.
-  { | ExceptionData + DatabaseExceptionData + DatabaseQueryExceptionData () } -> DatabaseQueryException a b c
+  { | ExceptionData + DatabaseExceptionData + DatabaseQueryExceptionData () } -> DatabaseQueryException (NoSubtype a) b c
 newDatabaseQueryException = new databaseException <<< new databaseQueryException <<< newLeaf
   
 asDatabaseQueryException :: forall a b c.
   DatabaseQueryException a b c -> _
 asDatabaseQueryException exn = exn # instanceOf databaseException >>= instanceOf databaseQueryException
   
-connErr :: ∀ a b c. DatabaseConnectionException a b c
+connErr :: ∀ a b c. DatabaseConnectionException (NoSubtype a) b c
 connErr = newDatabaseConnectionException { server: "MSSQL03", database: "testing", message: "couldn't connect" }
 
-queryErr :: ∀ a b c. DatabaseQueryException a b c
+queryErr :: ∀ a b c. DatabaseQueryException (NoSubtype a) b c
 queryErr = newDatabaseQueryException { server: "MSSQL03", database: "testing", attemptedQuery: "SELECT * FROM debug_log", message: "timeout exceeded" }
 
 errs :: Array (Exception _) 
@@ -53,13 +53,13 @@ errs = [connErr, queryErr]
 
 main :: Effect Unit
 main = do
-  let (directQueryErr :: DatabaseQueryException () () ()) = queryErr
+  let (directQueryErr :: DatabaseQueryException (NoSubtype ()) () ()) = queryErr
 
   logShow queryErr.message
   logShow (cast databaseException directQueryErr).server
   logShow (directQueryErr # cast databaseException # cast databaseQueryException).attemptedQuery
 
-  logShow (errs <#> (instanceOf databaseException >=> instanceOf databaseQueryException))
-  logShow (errs <#> asDatabaseQueryException)
-  logShow (errs <#> instanceOf databaseException)
+  -- logShow (errs <#> (instanceOf databaseException >=> instanceOf databaseQueryException))
+  -- logShow (errs <#> asDatabaseQueryException)
+  -- logShow (errs <#> instanceOf databaseException)
 
